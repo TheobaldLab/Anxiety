@@ -1,0 +1,351 @@
+---
+title: "Anxiety Exploratory Analysis"
+output: html_notebook
+---
+
+```{r}
+# Load necessary libraries
+library(lme4)
+library(dplyr)
+library(ggplot2)
+
+# Read in the data
+data <- read.csv("MASTER_MERGE_new.csv")
+
+# Create a complete cases dataset for modeling
+# First identify rows with missing values in key variables
+missing_rows <- is.na(data$z_aveExam) | is.na(data$Emotions_4) | is.na(data$Class)
+print(paste("Number of rows with missing values in key variables:", sum(missing_rows)))
+
+# Create a clean dataset with complete cases
+model_data <- data[!missing_rows, ]
+print(paste("Number of rows in clean dataset:", nrow(model_data)))
+
+# Ensure Emotions_4 is treated as a categorical variable
+# First, round to nearest whole number to ensure clean categories
+model_data$Emotions_4_cat <- round(model_data$Emotions_4)
+
+# Convert to factor and set reference level to 3
+model_data$Emotions_4_cat <- factor(model_data$Emotions_4_cat)
+
+# Check the levels
+print("Levels in Emotions_4_cat:")
+print(levels(model_data$Emotions_4_cat))
+
+# If 3 is not in the levels, we need to handle this
+if(!"3" %in% levels(model_data$Emotions_4_cat)) {
+  warning("Level 3 not found in Emotions_4_cat. Adding empty level.")
+  # Add the level even if there are no observations
+  model_data$Emotions_4_cat <- factor(model_data$Emotions_4_cat, levels = c(levels(model_data$Emotions_4_cat), "3"))
+}
+
+# Set reference level to 3
+model_data$Emotions_4_cat <- relevel(model_data$Emotions_4_cat, ref = "3")
+
+# Fit the mixed effects model
+model <- lmer(z_aveExam ~ Emotions_4_cat + (1|Class), data = model_data)
+
+# Print model summary
+summary(model)
+
+# Optional: Calculate and print confidence intervals
+confint(model)
+
+# Create visualizations
+# Boxplot of z_aveExam by Emotions_4_cat
+p1 <- ggplot(model_data, aes(x = Emotions_4_cat, y = z_aveExam)) +
+  geom_boxplot() +
+  ggtitle("Exam Z-Scores by Anxiety Levels") +
+  xlab("Anxiety Level (Category)") +
+  ylab("Standardized Exam Score")
+print(p1)
+
+# Calculate predicted values from the model (only for rows used in the model)
+model_data$predicted <- predict(model)
+
+# Plot actual vs predicted values
+p2 <- ggplot(model_data, aes(x = predicted, y = z_aveExam)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  ggtitle("Actual vs Predicted Z-Scores") +
+  xlab("Predicted Values") +
+  ylab("Actual Z-Scores")
+print(p2)
+
+# Check random effects
+ranef_df <- as.data.frame(ranef(model)$Class)
+ranef_df$Class <- rownames(ranef_df)
+
+# Plot random effects
+p3 <- ggplot(ranef_df, aes(x = reorder(Class, `(Intercept)`), y = `(Intercept)`)) +
+  geom_point() +
+  coord_flip() +
+  ggtitle("Random Effects by Class") +
+  xlab("Class") +
+  ylab("Random Effect")
+print(p3)
+```
+```{r}
+# Load necessary libraries
+library(lme4)
+library(dplyr)
+library(ggplot2)
+
+# Read in the data
+data <- read.csv("MASTER_MERGE_new.csv")
+
+# Create a complete cases dataset for modeling
+missing_rows <- is.na(data$z_aveExam) | is.na(data$Emotions_4) | is.na(data$Class)
+model_data <- data[!missing_rows, ]
+
+# Ensure Emotions_4 is treated as a categorical variable
+# First, round to nearest whole number to ensure clean categories
+model_data$Emotions_4_cat <- round(model_data$Emotions_4)
+
+# Convert to factor with EXPLICIT ORDER from 1 to 5
+model_data$Emotions_4_cat <- factor(model_data$Emotions_4_cat, 
+                                   levels = c("1", "2", "3", "4", "5"))
+
+# Set reference level to 3 for the model
+model_data$Emotions_4_cat_model <- factor(model_data$Emotions_4_cat)
+model_data$Emotions_4_cat_model <- relevel(model_data$Emotions_4_cat_model, ref = "3")
+
+# Fit the mixed effects model (using the reference-adjusted factor)
+model <- lmer(z_aveExam ~ Emotions_4_cat_model + (1|Class), data = model_data)
+
+# Print model summary
+summary(model)
+
+# Create visualizations with properly ordered factor
+# Boxplot of z_aveExam by Emotions_4_cat
+p1 <- ggplot(model_data, aes(x = Emotions_4_cat, y = z_aveExam)) +
+  geom_boxplot() +
+  ggtitle("Exam Z-Scores by Anxiety Levels") +
+  xlab("Anxiety Level (Category)") +
+  ylab("Standardized Exam Score")
+print(p1)
+```
+
+
+```{r}
+# Load necessary libraries
+library(lme4)
+library(dplyr)
+library(ggplot2)
+
+# Read in the data
+data <- read.csv("MASTER_MERGE_new.csv")
+
+# Create a complete cases dataset for modeling
+missing_rows <- is.na(data$Engage_Avg_Adj) | is.na(data$Emotions_4) | is.na(data$Class)
+print(paste("Number of rows with missing values in key variables:", sum(missing_rows)))
+
+# Create a clean dataset with complete cases
+model_data <- data[!missing_rows, ]
+print(paste("Number of rows in clean dataset:", nrow(model_data)))
+
+# Ensure Emotions_4 is treated as a categorical variable
+# First, round to nearest whole number to ensure clean categories
+model_data$Emotions_4_cat <- round(model_data$Emotions_4)
+
+# Convert to factor with EXPLICIT ORDER from 1 to 5
+model_data$Emotions_4_cat <- factor(model_data$Emotions_4_cat, 
+                                   levels = c("1", "2", "3", "4", "5"))
+
+# Set reference level to 3 for the model
+model_data$Emotions_4_cat_model <- factor(model_data$Emotions_4_cat)
+model_data$Emotions_4_cat_model <- relevel(model_data$Emotions_4_cat_model, ref = "3")
+
+# Fit the mixed effects model (using the reference-adjusted factor)
+model <- lmer(Engage_Avg_Adj ~ Emotions_4_cat_model + (1|Class), data = model_data)
+
+# Print model summary
+summary(model)
+
+# Optional: Calculate and print confidence intervals
+confint(model)
+
+# Create visualizations with properly ordered factor
+# Boxplot of Engage_Avg_Adj by Emotions_4_cat
+p1 <- ggplot(model_data, aes(x = Emotions_4_cat, y = Engage_Avg_Adj)) +
+  geom_boxplot() +
+  ggtitle("Engagement by Anxiety Levels") +
+  xlab("Anxiety Level (Category)") +
+  ylab("Adjusted Engagement Score")
+print(p1)
+
+# Calculate predicted values from the model (only for rows used in the model)
+model_data$predicted <- predict(model)
+
+# Plot actual vs predicted values
+p2 <- ggplot(model_data, aes(x = predicted, y = Engage_Avg_Adj)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  ggtitle("Actual vs Predicted Engagement Scores") +
+  xlab("Predicted Values") +
+  ylab("Actual Engagement Scores")
+print(p2)
+
+# Check random effects
+ranef_df <- as.data.frame(ranef(model)$Class)
+ranef_df$Class <- rownames(ranef_df)
+
+# Plot random effects
+p3 <- ggplot(ranef_df, aes(x = reorder(Class, `(Intercept)`), y = `(Intercept)`)) +
+  geom_point() +
+  coord_flip() +
+  ggtitle("Random Effects by Class") +
+  xlab("Class") +
+  ylab("Random Effect")
+print(p3)
+
+# Fit a quadratic model to test for curvilinear relationship
+# Standardize Emotions_4 to make interpretation of quadratic term easier
+model_data$Emotions_4_std <- scale(model_data$Emotions_4)
+
+# Create quadratic term
+model_data$Emotions_4_std_sq <- model_data$Emotions_4_std^2
+
+# Fit linear model (for comparison)
+linear_model <- lmer(Engage_Avg_Adj ~ Emotions_4_std + (1|Class), data = model_data)
+
+# Fit quadratic model
+quadratic_model <- lmer(Engage_Avg_Adj ~ Emotions_4_std + Emotions_4_std_sq + (1|Class), 
+                       data = model_data)
+
+# Compare models
+anova(linear_model, quadratic_model)
+
+# Print summary of quadratic model
+summary(quadratic_model)
+
+# Create data for plotting the predicted relationship
+pred_data <- data.frame(
+  Emotions_4_std = seq(min(model_data$Emotions_4_std), 
+                       max(model_data$Emotions_4_std), 
+                       length.out = 100),
+  Class = names(table(model_data$Class))[1]  # Use the first class for predictions
+)
+pred_data$Emotions_4_std_sq <- pred_data$Emotions_4_std^2
+
+# Get predictions
+pred_data$predicted <- predict(quadratic_model, newdata = pred_data, re.form = NA)
+
+# Convert standardized anxiety back to original scale for plotting
+mean_anx <- mean(model_data$Emotions_4, na.rm = TRUE)
+sd_anx <- sd(model_data$Emotions_4, na.rm = TRUE)
+pred_data$anxiety <- pred_data$Emotions_4_std * sd_anx + mean_anx
+
+# Plot predicted relationship from quadratic model
+p4 <- ggplot(pred_data, aes(x = anxiety, y = predicted)) +
+  geom_line() +
+  labs(title = "Predicted Engagement by Anxiety Level",
+       x = "Anxiety (Original Scale)",
+       y = "Predicted Engagement Score") +
+  theme_minimal()
+print(p4)
+
+# Create a scatter plot with fitted curve
+p5 <- ggplot(model_data, aes(x = Emotions_4, y = Engage_Avg_Adj)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2), color = "blue") +
+  labs(title = "Engagement vs Anxiety with Quadratic Fit",
+       x = "Anxiety",
+       y = "Engagement Score") +
+  theme_minimal()
+print(p5)
+```
+
+
+```{r}
+
+# Filter out rows with NA in key variables
+clean_data <- data %>%
+  filter(!is.na(DFW) & !is.na(Emotions_4) & !is.na(Class))
+
+# Examine sample sizes by anxiety level
+anx_counts <- table(round(clean_data$Emotions_4))
+print("Sample sizes by anxiety level:")
+print(anx_counts)
+
+# Convert DFW to binary (1 = Yes, 0 = No)
+clean_data$DFW_binary <- ifelse(clean_data$DFW == "Yes" | clean_data$DFW == "Y", 1, 0)
+
+# Check DFW rates by anxiety level
+dfw_by_anx <- clean_data %>%
+  group_by(Anx = round(Emotions_4)) %>%
+  summarize(
+    N = n(),
+    N_DFW = sum(DFW_binary),
+    DFW_rate = mean(DFW_binary),
+    SE = sqrt((DFW_rate * (1 - DFW_rate)) / N)
+  )
+print("DFW rates by anxiety level:")
+print(dfw_by_anx)
+
+# Ensure Emotions_4 is treated as a categorical variable
+clean_data$Emotions_4_cat <- factor(round(clean_data$Emotions_4), 
+                                   levels = c("1", "2", "3", "4", "5"))
+clean_data$Emotions_4_cat_model <- relevel(clean_data$Emotions_4_cat, ref = "3")
+
+# Fit the model with stronger control parameters
+glmer_model <- glmer(DFW_binary ~ Emotions_4_cat_model + (1|Class), 
+                    data = clean_data, 
+                    family = binomial,
+                    control = glmerControl(optimizer = "bobyqa", 
+                                          optCtrl = list(maxfun = 100000)))
+
+# Get summary
+summary_result <- summary(glmer_model)
+print(summary_result)
+
+# Extract coefficients and standard errors
+coefs <- fixef(glmer_model)
+se <- sqrt(diag(vcov(glmer_model)))
+
+# Calculate confidence intervals manually
+z_value <- 1.96  # 95% CI
+lower_ci <- coefs - z_value * se
+upper_ci <- coefs + z_value * se
+
+# Convert to odds ratios
+odds_ratios <- exp(coefs)
+lower_or <- exp(lower_ci)
+upper_or <- exp(upper_ci)
+
+# Create data frame for plotting
+or_df <- data.frame(
+  Variable = c("Intercept", "Anxiety 1", "Anxiety 2", "Anxiety 4", "Anxiety 5"),
+  OR = odds_ratios,
+  Lower = lower_or,
+  Upper = upper_or
+)
+
+# Check if any confidence intervals are extreme
+print("Odds ratios with confidence intervals:")
+print(or_df)
+
+# Create improved odds ratio plot
+p2 <- ggplot(or_df[-1,], aes(x = Variable, y = OR)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  coord_flip() +
+  scale_y_log10(limits = c(0.05, 20)) +  # Set reasonable limits
+  ggtitle("Odds Ratios for DFW (Reference: Anxiety Level 3)") +
+  xlab("") +
+  ylab("Odds Ratio (log scale)") +
+  theme_minimal()
+print(p2)
+
+# Create bar plot with raw DFW rates
+p_raw <- ggplot(dfw_by_anx, aes(x = factor(Anx), y = DFW_rate)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_errorbar(aes(ymin = DFW_rate - 1.96*SE, ymax = DFW_rate + 1.96*SE), width = 0.2) +
+  ggtitle("Raw DFW Rates by Anxiety Level") +
+  xlab("Anxiety Level") +
+  ylab("DFW Rate") +
+  theme_minimal()
+print(p_raw)
+```
+
