@@ -1,5 +1,5 @@
 ---
-title: "Anxiety Exploratory Analysis"
+title: "Anxiety Exploratory"
 output: html_notebook
 ---
 
@@ -8,9 +8,25 @@ output: html_notebook
 library(lme4)
 library(dplyr)
 library(ggplot2)
+library(gridExtra)
+library(lme4)      
+library(lmerTest)  
+library(patchwork) 
+library(forcats)   
+library(car)       
+library(sjPlot)    
 
+```
+
+
+
+```{r}
 # Read in the data
 data <- read.csv("MASTER_MERGE_new.csv")
+```
+
+
+```{r}
 
 # Create a complete cases dataset for modeling
 # First identify rows with missing values in key variables
@@ -86,17 +102,6 @@ p3 <- ggplot(ranef_df, aes(x = reorder(Class, `(Intercept)`), y = `(Intercept)`)
 print(p3)
 ```
 ```{r}
-# Load necessary libraries
-library(lme4)
-library(dplyr)
-library(ggplot2)
-
-# Read in the data
-data <- read.csv("MASTER_MERGE_new.csv")
-
-# Create a complete cases dataset for modeling
-missing_rows <- is.na(data$z_aveExam) | is.na(data$Emotions_4) | is.na(data$Class)
-model_data <- data[!missing_rows, ]
 
 # Ensure Emotions_4 is treated as a categorical variable
 # First, round to nearest whole number to ensure clean categories
@@ -128,21 +133,6 @@ print(p1)
 
 
 ```{r}
-# Load necessary libraries
-library(lme4)
-library(dplyr)
-library(ggplot2)
-
-# Read in the data
-data <- read.csv("MASTER_MERGE_new.csv")
-
-# Create a complete cases dataset for modeling
-missing_rows <- is.na(data$Engage_Avg_Adj) | is.na(data$Emotions_4) | is.na(data$Class)
-print(paste("Number of rows with missing values in key variables:", sum(missing_rows)))
-
-# Create a clean dataset with complete cases
-model_data <- data[!missing_rows, ]
-print(paste("Number of rows in clean dataset:", nrow(model_data)))
 
 # Ensure Emotions_4 is treated as a categorical variable
 # First, round to nearest whole number to ensure clean categories
@@ -349,3 +339,1343 @@ p_raw <- ggplot(dfw_by_anx, aes(x = factor(Anx), y = DFW_rate)) +
 print(p_raw)
 ```
 
+
+
+```{r}
+
+# Convert DFW to binary (assuming 'Yes' or 'Y' means DFW)
+data$DFW_binary <- ifelse(data$DFW == "Yes" | data$DFW == "Y", 1, 0)
+
+# Create a categorical version of Emotions_4 for binning
+data$Emotions_4_cat <- cut(data$Emotions_4, 
+                           breaks = c(0, 1.5, 2.5, 3.5, 4.5, 5.5),
+                           labels = c("1", "2", "3", "4", "5"),
+                           include.lowest = TRUE)
+
+# Define demographic variables to analyze
+demographic_vars <- c("FirstGen", "race_cat", "gender_cat")
+
+# Create plots for each demographic variable
+for (demo_var in demographic_vars) {
+  cat("Analyzing DFW rates by", demo_var, "...\n")
+  
+  # Skip if variable doesn't exist
+  if (!demo_var %in% names(data)) {
+    warning(paste0("Variable ", demo_var, " not found in data"))
+    next
+  }
+  
+  # Calculate overall rates by anxiety level
+  overall_rates <- data %>%
+    filter(!is.na(Emotions_4_cat) & !is.na(DFW_binary)) %>%
+    group_by(Emotions_4_cat) %>%
+    summarize(
+      N = n(),
+      DFW_rate = mean(DFW_binary, na.rm = TRUE),
+      SE = sqrt(DFW_rate * (1 - DFW_rate) / N)
+    ) %>%
+    mutate(Group = "Overall")
+  
+  # Calculate rates by demographic group and anxiety level
+  group_rates <- data %>%
+    filter(!is.na(Emotions_4_cat) & !is.na(DFW_binary) & !is.na(get(demo_var))) %>%
+    group_by(get(demo_var), Emotions_4_cat) %>%
+    summarize(
+      N = n(),
+      DFW_rate = mean(DFW_binary, na.rm = TRUE),
+      SE = sqrt(DFW_rate * (1 - DFW_rate) / N)
+    ) %>%
+    rename(Group = `get(demo_var)`)
+  
+  # Combine overall and group rates
+  all_rates <- bind_rows(overall_rates, group_rates)
+  
+  # Create line plot connecting points
+  p <- ggplot(all_rates, aes(x = Emotions_4_cat, y = DFW_rate, 
+                             color = Group, group = Group)) +
+    # Add points
+    geom_point(size = 3) +
+    # Add lines connecting points
+    geom_line(size = 1) +
+    # Add error bars
+    geom_errorbar(aes(ymin = pmax(0, DFW_rate - 1.96*SE), 
+                      ymax = pmin(1, DFW_rate + 1.96*SE)), 
+                  width = 0.2) +
+    # Labels and title
+    ggtitle(paste0("DFW Rates by Anxiety Level and ", demo_var)) +
+    xlab("Anxiety Level (Emotions_4)") +
+    ylab("DFW Rate") +
+    # Formatting
+    theme_minimal() +
+    theme(legend.position = "bottom") +
+    # Set y-axis limits
+    scale_y_continuous(limits = c(0, 1))
+  
+  # Display the plot
+  print(p)
+}
+```
+```{r}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+library(lme4)      # For mixed effects models
+library(emmeans)   # For post-hoc comparisons
+
+
+# Convert DFW to binary (assuming 'Yes' or 'Y' means DFW)
+data$DFW_binary <- ifelse(data$DFW == "Yes" | data$DFW == "Y", 1, 0)
+
+# Create categorical version of Emotions_4
+data$Anxiety_Level <- cut(data$Emotions_4, 
+                          breaks = c(0, 2, 4, 5.5),
+                          labels = c("Low", "Medium", "High"),
+                          include.lowest = TRUE)
+
+# Filter data to remove missing values
+analysis_data <- data %>%
+  filter(!is.na(Anxiety_Level) & !is.na(DFW_binary) & !is.na(FirstGen))
+
+# Ensure both variables are treated as factors
+analysis_data$Anxiety_Level <- factor(analysis_data$Anxiety_Level)
+analysis_data$FirstGen <- factor(analysis_data$FirstGen)
+
+# Fit categorical interaction model
+cat_model <- glmer(DFW_binary ~ Anxiety_Level * FirstGen + (1|Class), 
+                   family = binomial, 
+                   data = analysis_data,
+                   control = glmerControl(optimizer = "bobyqa"))
+
+# Print model summary
+summary_cat <- summary(cat_model)
+print("Model with Categorical Anxiety Levels:")
+print(summary_cat)
+
+# Analyze model with Anova to get overall effects
+library(car)
+cat_anova <- Anova(cat_model, type = "III")
+print("ANOVA of Categorical Model:")
+print(cat_anova)
+
+# Calculate predicted probabilities
+newdata_cat <- expand.grid(
+  Anxiety_Level = c("Low", "Medium", "High"),
+  FirstGen = c("Continuing Generation", "First Generation"),
+  Class = names(table(analysis_data$Class))[1]  # Use first class
+)
+
+newdata_cat$pred_prob <- predict(cat_model, newdata = newdata_cat, type = "response", re.form = NA)
+
+# Create cross-tabulation of actual DFW rates
+actual_rates <- analysis_data %>%
+  group_by(Anxiety_Level, FirstGen) %>%
+  summarize(
+    n = n(),
+    dfw_rate = mean(DFW_binary, na.rm = TRUE),
+    se = sqrt(dfw_rate * (1 - dfw_rate) / n)
+  )
+
+print("Actual DFW Rates by Anxiety Level and First-Gen Status:")
+print(actual_rates)
+
+# Visualize actual rates
+actual_plot <- ggplot(actual_rates, aes(x = Anxiety_Level, y = dfw_rate, 
+                                        color = FirstGen, group = FirstGen)) +
+  geom_point(size = 3) +
+  geom_line(size = 1) +
+  geom_errorbar(aes(ymin = pmax(0, dfw_rate - 1.96*se), 
+                    ymax = pmin(1, dfw_rate + 1.96*se)), 
+                width = 0.2) +
+  labs(
+    title = "DFW Rates by Anxiety Level and First-Generation Status",
+    subtitle = "Using categorical anxiety levels",
+    x = "Anxiety Level",
+    y = "DFW Rate",
+    color = "First-Gen Status"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(actual_plot)
+
+# Visualize model predictions
+model_plot <- ggplot(newdata_cat, aes(x = Anxiety_Level, y = pred_prob, 
+                                     color = FirstGen, group = FirstGen)) +
+  geom_point(size = 3) +
+  geom_line(size = 1) +
+  labs(
+    title = "Predicted Probability of DFW by Anxiety Level and First-Generation Status",
+    subtitle = "From categorical interaction model",
+    x = "Anxiety Level",
+    y = "Predicted Probability of DFW",
+    color = "First-Gen Status"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(model_plot)
+
+# Calculate contrasts to test specific hypotheses
+# 1. Test if the effect of anxiety differs between groups at each level
+emmeans_results <- emmeans(cat_model, ~ Anxiety_Level | FirstGen)
+contrasts_by_group <- contrast(emmeans_results, method = "pairwise")
+print("Contrasts within each First-Gen group:")
+print(contrasts_by_group)
+
+# 2. Test if the group difference varies by anxiety level
+emmeans_flip <- emmeans(cat_model, ~ FirstGen | Anxiety_Level)
+contrasts_by_anxiety <- contrast(emmeans_flip, method = "pairwise")
+print("First-Gen contrasts at each anxiety level:")
+print(contrasts_by_anxiety)
+
+# 3. Test interaction contrasts - difference of differences
+interaction_contrasts <- contrast(emmeans_results, 
+                                 interaction = c("pairwise", "pairwise"))
+print("Interaction contrasts:")
+print(interaction_contrasts)
+```
+
+
+```{r}
+
+
+# Convert DFW to binary (assuming 'Yes' or 'Y' means DFW)
+data$DFW_binary <- ifelse(data$DFW == "Yes" | data$DFW == "Y", 1, 0)
+
+# Filter data to remove missing values
+analysis_data <- data %>%
+  filter(!is.na(Emotions_4) & !is.na(DFW_binary) & !is.na(FirstGen))
+
+# First, let's test a model without interaction
+model_main <- glmer(DFW_binary ~ Emotions_4 + FirstGen + (1|Class), 
+                    family = binomial, 
+                    data = analysis_data,
+                    control = glmerControl(optimizer = "bobyqa"))
+
+# Then, test a model with interaction
+model_interaction <- glmer(DFW_binary ~ Emotions_4 * FirstGen + (1|Class), 
+                           family = binomial, 
+                           data = analysis_data,
+                           control = glmerControl(optimizer = "bobyqa"))
+
+# Compare models to see if interaction significantly improves model fit
+anova_comparison <- anova(model_main, model_interaction)
+print("Model Comparison (Testing significance of interaction):")
+print(anova_comparison)
+
+# Examine the interaction model in detail
+summary_interaction <- summary(model_interaction)
+print("Detailed Results of Interaction Model:")
+print(summary_interaction)
+
+# Calculate and print odds ratios for easier interpretation
+odds_ratios <- exp(fixef(model_interaction))
+print("Odds Ratios:")
+print(odds_ratios)
+
+# Examine the interaction effect specifically
+interaction_coef <- summary_interaction$coefficients["Emotions_4:FirstGenFirst Generation", ]
+print("Interaction Term Statistics:")
+print(interaction_coef)
+
+# Create predicted probabilities for visualization
+newdata <- expand.grid(
+  Emotions_4 = seq(1, 5, by = 0.1),
+  FirstGen = c("Continuing Generation", "First Generation"),
+  Class = names(table(analysis_data$Class))[1]  # Use first class
+)
+
+newdata$pred_prob <- predict(model_interaction, newdata = newdata, type = "response", re.form = NA)
+
+# Create visualization of interaction effect with fitted lines from model
+interaction_plot <- ggplot(newdata, aes(x = Emotions_4, y = pred_prob, color = FirstGen, group = FirstGen)) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "Predicted Probability of DFW by Anxiety and First-Generation Status",
+    subtitle = "Showing interaction effect from statistical model",
+    x = "Anxiety Level (Emotions_4)",
+    y = "Predicted Probability of DFW",
+    color = "First-Gen Status"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(interaction_plot)
+
+# Calculate simple slopes for each group
+# For continuing generation students
+cont_gen_data <- newdata[newdata$FirstGen == "Continuing Generation",]
+cont_gen_model <- glm(pred_prob ~ Emotions_4, data = cont_gen_data, family = quasibinomial())
+cont_gen_coef <- coef(summary(cont_gen_model))
+print("Simple Slope for Continuing Generation Students:")
+print(cont_gen_coef)
+
+# For first generation students
+first_gen_data <- newdata[newdata$FirstGen == "First Generation",]
+first_gen_model <- glm(pred_prob ~ Emotions_4, data = first_gen_data, family = quasibinomial())
+first_gen_coef <- coef(summary(first_gen_model))
+print("Simple Slope for First Generation Students:")
+print(first_gen_coef)
+
+# Calculate marginal effects at representative values
+# At low anxiety (Emotions_4 = 1)
+low_anxiety <- newdata[newdata$Emotions_4 == 1,]
+print("Group difference at Anxiety Level 1:")
+print(low_anxiety[low_anxiety$FirstGen == "First Generation", "pred_prob"] - 
+        low_anxiety[low_anxiety$FirstGen == "Continuing Generation", "pred_prob"])
+
+# At medium anxiety (Emotions_4 = 3)
+med_anxiety <- newdata[newdata$Emotions_4 == 3,]
+print("Group difference at Anxiety Level 3:")
+print(med_anxiety[med_anxiety$FirstGen == "First Generation", "pred_prob"] - 
+        med_anxiety[med_anxiety$FirstGen == "Continuing Generation", "pred_prob"])
+
+# At high anxiety (Emotions_4 = 5)
+high_anxiety <- newdata[newdata$Emotions_4 == 5,]
+print("Group difference at Anxiety Level 5:")
+print(high_anxiety[high_anxiety$FirstGen == "First Generation", "pred_prob"] - 
+        high_anxiety[high_anxiety$FirstGen == "Continuing Generation", "pred_prob"])
+```
+
+```{r}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+# Source the IdenGroups.R file from the Anxiety directory
+source("IdenGroups.R")
+
+# Read your data
+data <- read.csv("MASTER_MERGE_new.csv")
+
+# Apply the demographic categorization function
+data_with_demographics <- add.All(data)
+
+# Create a basic analysis of anxiety vs exam performance
+anxiety_analysis <- data_with_demographics %>%
+  # Remove rows with missing values in key columns
+  filter(!is.na(Emotions_4) & !is.na(z_aveExam)) %>%
+  # Group by anxiety levels (you might want to bin these)
+  mutate(anxiety_level = cut(Emotions_4, 
+                           breaks = c(0, 1, 2, 3, 4, 5),
+                           labels = c("Very Low", "Low", "Moderate", "High", "Very High"),
+                           include.lowest = TRUE)) %>%
+  # Summarize z-scores by anxiety level
+  group_by(anxiety_level) %>%
+  summarize(
+    mean_zscore = mean(z_aveExam, na.rm = TRUE),
+    sd_zscore = sd(z_aveExam, na.rm = TRUE),
+    n = n()
+  )
+
+# Print the results
+print(anxiety_analysis)
+
+# Visualize the relationship
+ggplot(data_with_demographics, aes(x = Emotions_4, y = z_aveExam)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", color = "blue") +
+  labs(
+    title = "Relationship Between Anxiety and Exam Performance",
+    x = "Anxiety Level (Emotions_4)",
+    y = "Z-Score (Average Exam)"
+  ) +
+  theme_minimal()
+
+# Analyze by demographic categories
+# By gender
+gender_anxiety <- data_with_demographics %>%
+  filter(!is.na(Emotions_4) & !is.na(z_aveExam) & !is.na(gender_cat)) %>%
+  group_by(gender_cat) %>%
+  summarize(
+    correlation = cor(Emotions_4, z_aveExam, use = "complete.obs"),
+    mean_anxiety = mean(Emotions_4, na.rm = TRUE),
+    mean_zscore = mean(z_aveExam, na.rm = TRUE),
+    n = n()
+  )
+
+# By race category  
+race_anxiety <- data_with_demographics %>%
+  filter(!is.na(Emotions_4) & !is.na(z_aveExam) & !is.na(race_cat)) %>%
+  group_by(race_cat) %>%
+  summarize(
+    correlation = cor(Emotions_4, z_aveExam, use = "complete.obs"),
+    mean_anxiety = mean(Emotions_4, na.rm = TRUE),
+    mean_zscore = mean(z_aveExam, na.rm = TRUE),
+    n = n()
+  )
+
+# By first-generation status
+firstgen_anxiety <- data_with_demographics %>%
+  filter(!is.na(Emotions_4) & !is.na(z_aveExam) & !is.na(FirstGen)) %>%
+  group_by(FirstGen) %>%
+  summarize(
+    correlation = cor(Emotions_4, z_aveExam, use = "complete.obs"),
+    mean_anxiety = mean(Emotions_4, na.rm = TRUE),
+    mean_zscore = mean(z_aveExam, na.rm = TRUE),
+    n = n()
+  )
+
+# Print demographic analyses
+print("Anxiety and Performance by Gender:")
+print(gender_anxiety)
+
+print("Anxiety and Performance by Race Category:")
+print(race_anxiety)
+
+print("Anxiety and Performance by First-Generation Status:")
+print(firstgen_anxiety)
+
+# Save results to a file
+write.csv(anxiety_analysis, "anxiety_overall_analysis.csv", row.names = FALSE)
+write.csv(gender_anxiety, "anxiety_by_gender.csv", row.names = FALSE)
+write.csv(race_anxiety, "anxiety_by_race.csv", row.names = FALSE)
+write.csv(firstgen_anxiety, "anxiety_by_firstgen.csv", row.names = FALSE)
+```
+```{r}
+# Source the IdenGroups.R file from the Anxiety directory
+source("IdenGroups.R")
+
+
+# Apply the demographic categorization function
+data_with_demographics <- add.All(data)
+
+# Filter out rows with missing values in key columns
+analysis_data <- data_with_demographics %>%
+  filter(!is.na(Emotions_4) & !is.na(z_aveExam))
+
+# Let's check if FirstGen has any valid values
+print("Number of valid FirstGen values:")
+print(table(analysis_data$FirstGen, useNA = "always"))
+
+# Create visualization comparing gender groups on the same plot
+gender_comparison <- ggplot(
+  filter(analysis_data, !is.na(gender_cat)), 
+  aes(x = Emotions_4, y = z_aveExam, color = gender_cat)
+) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(
+    title = "Anxiety vs. Exam Performance by Gender",
+    x = "Anxiety Level (Emotions_4)",
+    y = "Z-Score (Average Exam)",
+    color = "Gender"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1")
+
+# Create visualization comparing race categories on the same plot
+race_comparison <- ggplot(
+  filter(analysis_data, !is.na(race_cat)), 
+  aes(x = Emotions_4, y = z_aveExam, color = race_cat)
+) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(
+    title = "Anxiety vs. Exam Performance by Race Category",
+    x = "Anxiety Level (Emotions_4)",
+    y = "Z-Score (Average Exam)",
+    color = "Race Category"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Dark2")
+
+# Modified function to handle cases with insufficient data
+get_model_stats <- function(data, group_var) {
+  # Check if the group variable exists in the data
+  if (!(group_var %in% names(data))) {
+    warning(paste("Variable", group_var, "not found in data"))
+    return(data.frame(
+      group = "Error",
+      r_squared = NA,
+      p_value = NA,
+      equation = "Variable not found",
+      stringsAsFactors = FALSE
+    ))
+  }
+  
+  # Filter to non-NA values of the group variable
+  valid_data <- data[!is.na(data[[group_var]]), ]
+  
+  if (nrow(valid_data) == 0) {
+    warning("No valid data for this group variable")
+    return(data.frame(
+      group = "No valid data",
+      r_squared = NA,
+      p_value = NA,
+      equation = "No valid data",
+      stringsAsFactors = FALSE
+    ))
+  }
+  
+  groups <- unique(valid_data[[group_var]])
+  result <- data.frame(
+    group = character(),
+    r_squared = numeric(),
+    p_value = numeric(),
+    equation = character(),
+    stringsAsFactors = FALSE
+  )
+  
+  # Overall model
+  overall_model <- lm(z_aveExam ~ Emotions_4, data = valid_data)
+  overall_summary <- summary(overall_model)
+  result <- rbind(result, data.frame(
+    group = "Overall",
+    r_squared = overall_summary$r.squared,
+    p_value = pf(
+      overall_summary$fstatistic[1],
+      overall_summary$fstatistic[2],
+      overall_summary$fstatistic[3],
+      lower.tail = FALSE
+    ),
+    equation = sprintf(
+      "y = %.3fx + %.3f",
+      overall_summary$coefficients[2, 1],
+      overall_summary$coefficients[1, 1]
+    ),
+    stringsAsFactors = FALSE
+  ))
+  
+  # Group-specific models
+  for (g in groups) {
+    group_data <- valid_data[valid_data[[group_var]] == g, ]
+    if (nrow(group_data) > 5) {  # Only fit if enough data
+      tryCatch({
+        model <- lm(z_aveExam ~ Emotions_4, data = group_data)
+        model_summary <- summary(model)
+        result <- rbind(result, data.frame(
+          group = g,
+          r_squared = model_summary$r.squared,
+          p_value = pf(
+            model_summary$fstatistic[1],
+            model_summary$fstatistic[2],
+            model_summary$fstatistic[3],
+            lower.tail = FALSE
+          ),
+          equation = sprintf(
+            "y = %.3fx + %.3f",
+            model_summary$coefficients[2, 1],
+            model_summary$coefficients[1, 1]
+          ),
+          stringsAsFactors = FALSE
+        ))
+      }, error = function(e) {
+        warning(paste("Error fitting model for group", g, ":", e$message))
+      })
+    } else {
+      warning(paste("Not enough data points for group", g))
+    }
+  }
+  
+  return(result)
+}
+
+# Calculate stats for gender and race only
+gender_stats <- get_model_stats(analysis_data, "gender_cat")
+race_stats <- get_model_stats(analysis_data, "race_cat")
+
+# Create FirstGen plot only if there are valid values
+if (sum(!is.na(analysis_data$FirstGen)) > 0) {
+  firstgen_comparison <- ggplot(
+    filter(analysis_data, !is.na(FirstGen)), 
+    aes(x = Emotions_4, y = z_aveExam, color = FirstGen)
+  ) +
+    geom_smooth(method = "lm", se = TRUE) +
+    labs(
+      title = "Anxiety vs. Exam Performance by First-Generation Status",
+      x = "Anxiety Level (Emotions_4)",
+      y = "Z-Score (Average Exam)",
+      color = "First-Gen Status"
+    ) +
+    theme_minimal() +
+    scale_color_brewer(palette = "Set2")
+  
+  # Add overall trend line
+  firstgen_comparison <- firstgen_comparison + 
+    geom_smooth(
+      data = analysis_data,
+      aes(x = Emotions_4, y = z_aveExam),
+      method = "lm",
+      color = "black",
+      linetype = "dashed",
+      se = FALSE
+    )
+  
+  # Try to calculate FirstGen stats
+  tryCatch({
+    firstgen_stats <- get_model_stats(analysis_data, "FirstGen")
+    print("First-Generation Status Model Statistics:")
+    print(firstgen_stats)
+  }, error = function(e) {
+    warning(paste("Could not calculate FirstGen statistics:", e$message))
+  })
+}
+
+# Add overall trend line to each plot for comparison
+overall_trend <- geom_smooth(
+  data = analysis_data,
+  aes(x = Emotions_4, y = z_aveExam),
+  method = "lm",
+  color = "black",
+  linetype = "dashed",
+  se = FALSE
+)
+
+gender_comparison <- gender_comparison + overall_trend
+race_comparison <- race_comparison + overall_trend
+
+# Print the statistics
+print("Gender Model Statistics:")
+print(gender_stats)
+print("Race Model Statistics:")
+print(race_stats)
+
+# Display the plots
+print(gender_comparison)
+print(race_comparison)
+
+# Display FirstGen plot if it exists
+if (exists("firstgen_comparison")) {
+  print(firstgen_comparison)
+  
+  # Arrange all three plots in a grid
+  all_plots <- grid.arrange(gender_comparison, race_comparison, firstgen_comparison, nrow = 3)
+} else {
+  # Arrange just the two valid plots
+  all_plots <- grid.arrange(gender_comparison, race_comparison, nrow = 2)
+  
+  print("Note: FirstGen plot could not be created due to insufficient valid data")
+}
+```
+```{r}
+
+# Filter out rows with missing values in key columns
+analysis_data <- data_with_demographics %>%
+  filter(!is.na(Emotions_4) & !is.na(z_aveExam) & !is.na(Class))
+
+# First, fit overall model with random effect for class
+overall_mixed_model <- lmer(z_aveExam ~ Emotions_4 + (1|Class), data = analysis_data)
+summary_overall <- summary(overall_mixed_model)
+print("Overall Mixed Model with Random Effects for Class:")
+print(summary_overall)
+
+# Function to fit mixed models by group
+fit_mixed_models_by_group <- function(data, group_var) {
+  # Check if the group variable exists
+  if (!(group_var %in% names(data))) {
+    warning(paste("Variable", group_var, "not found in data"))
+    return(NULL)
+  }
+  
+  # Get unique groups
+  groups <- unique(data[[group_var]])
+  groups <- groups[!is.na(groups)]
+  
+  # Create results list
+  results <- list()
+  
+  # Fit model for each group
+  for (g in groups) {
+    group_data <- data[data[[group_var]] == g, ]
+    if (nrow(group_data) > 10) {  # Ensure enough data for model
+      tryCatch({
+        # Fit mixed model with random effect for class
+        model <- lmer(z_aveExam ~ Emotions_4 + (1|Class), data = group_data)
+        results[[g]] <- list(model = model, summary = summary(model))
+      }, error = function(e) {
+        warning(paste("Error fitting model for group", g, ":", e$message))
+      })
+    }
+  }
+  
+  # Fit interaction model
+  tryCatch({
+    interaction_formula <- as.formula(paste0("z_aveExam ~ Emotions_4 * ", group_var, " + (1|Class)")) 
+    interaction_model <- lmer(interaction_formula, data = data)
+    results[["interaction"]] <- list(model = interaction_model, summary = summary(interaction_model))
+  }, error = function(e) {
+    warning(paste("Error fitting interaction model:", e$message))
+  })
+  
+  return(results)
+}
+
+# Fit models for gender, race, and FirstGen
+gender_models <- fit_mixed_models_by_group(analysis_data, "gender_cat")
+race_models <- fit_mixed_models_by_group(analysis_data, "race_cat")
+firstgen_models <- fit_mixed_models_by_group(analysis_data, "FirstGen")
+
+# Print results
+if (!is.null(gender_models)) {
+  print("Gender Models with Random Effects for Class:")
+  
+  # Print interaction effects specifically
+  if (!is.null(gender_models[["interaction"]])) {
+    print("Gender Interaction Effects:")
+    print(gender_models[["interaction"]]$summary$coefficients)
+  }
+}
+
+if (!is.null(race_models)) {
+  print("Race Models with Random Effects for Class:")
+  
+  # Print interaction effects specifically
+  if (!is.null(race_models[["interaction"]])) {
+    print("Race Interaction Effects:")
+    print(race_models[["interaction"]]$summary$coefficients)
+  }
+}
+
+if (!is.null(firstgen_models)) {
+  print("First-Generation Models with Random Effects for Class:")
+  
+  # Print interaction effects specifically
+  if (!is.null(firstgen_models[["interaction"]])) {
+    print("First-Generation Interaction Effects:")
+    print(firstgen_models[["interaction"]]$summary$coefficients)
+  }
+}
+
+# Create predictions from models for plotting
+# Function to generate predictions from mixed models
+generate_predictions <- function(model_list, data, group_var) {
+  if (is.null(model_list) || is.null(model_list[["interaction"]]) || is.null(model_list[["interaction"]]$model)) {
+    warning("Model not available for predictions")
+    return(NULL)
+  }
+  
+  model <- model_list[["interaction"]]$model
+  
+  # Create prediction grid
+  pred_all <- data.frame()
+  
+  # Get unique groups
+  groups <- unique(data[[group_var]])
+  groups <- groups[!is.na(groups)]
+  
+  # Get most common class
+  most_common_class <- names(which.max(table(data$Class)))
+  
+  # For each group
+  for (g in groups) {
+    pred_grid <- data.frame(Emotions_4 = seq(1, 5, length.out = 100))
+    pred_grid[[group_var]] <- g
+    pred_grid$Class <- most_common_class
+    
+    # Generate predictions from interaction model
+    pred_grid$z_aveExam <- predict(model, newdata = pred_grid, re.form = NA)
+    
+    # Add to combined dataframe
+    pred_all <- rbind(pred_all, pred_grid)
+  }
+  
+  return(pred_all)
+}
+
+# Generate predictions for overall trend
+generate_overall_predictions <- function(model, data) {
+  if (is.null(model)) {
+    warning("Model not available for predictions")
+    return(NULL)
+  }
+  
+  # Create prediction grid
+  pred_grid <- data.frame(Emotions_4 = seq(1, 5, length.out = 100))
+  
+  # Get most common class
+  most_common_class <- names(which.max(table(data$Class)))
+  pred_grid$Class <- most_common_class
+  
+  # Generate predictions
+  pred_grid$z_aveExam <- predict(model, newdata = pred_grid, re.form = NA)
+  
+  return(pred_grid)
+}
+
+# Generate overall predictions
+overall_pred <- generate_overall_predictions(overall_mixed_model, analysis_data)
+
+# Try to generate group predictions and create plots
+tryCatch({
+  gender_pred <- generate_predictions(gender_models, analysis_data, "gender_cat")
+  
+  if (!is.null(gender_pred)) {
+    # Create gender plot with mixed model predictions
+    gender_plot <- ggplot() +
+      geom_line(data = gender_pred, aes(x = Emotions_4, y = z_aveExam, color = gender_cat), size = 1) +
+      geom_line(data = overall_pred, aes(x = Emotions_4, y = z_aveExam), 
+                color = "black", linetype = "dashed") +
+      labs(
+        title = "Anxiety vs. Exam Performance by Gender",
+        subtitle = "Controlling for Class Random Effects",
+        x = "Anxiety Level (Emotions_4)",
+        y = "Z-Score (Average Exam)",
+        color = "Gender"
+      ) +
+      theme_minimal() +
+      scale_color_brewer(palette = "Set1") +
+      ylim(-1, 1) # Set consistent y-axis limits
+    
+    print(gender_plot)
+  }
+}, error = function(e) {
+  warning(paste("Could not generate gender plot:", e$message))
+})
+
+tryCatch({
+  race_pred <- generate_predictions(race_models, analysis_data, "race_cat")
+  
+  if (!is.null(race_pred)) {
+    # Create race plot with mixed model predictions
+    race_plot <- ggplot() +
+      geom_line(data = race_pred, aes(x = Emotions_4, y = z_aveExam, color = race_cat), size = 1) +
+      geom_line(data = overall_pred, aes(x = Emotions_4, y = z_aveExam), 
+                color = "black", linetype = "dashed") +
+      labs(
+        title = "Anxiety vs. Exam Performance by Race Category",
+        subtitle = "Controlling for Class Random Effects",
+        x = "Anxiety Level (Emotions_4)",
+        y = "Z-Score (Average Exam)",
+        color = "Race Category"
+      ) +
+      theme_minimal() +
+      scale_color_brewer(palette = "Dark2") +
+      ylim(-1, 1) # Set consistent y-axis limits
+    
+    print(race_plot)
+  }
+}, error = function(e) {
+  warning(paste("Could not generate race plot:", e$message))
+})
+
+tryCatch({
+  firstgen_pred <- generate_predictions(firstgen_models, analysis_data, "FirstGen")
+  
+  if (!is.null(firstgen_pred)) {
+    # Create firstgen plot with mixed model predictions
+    firstgen_plot <- ggplot() +
+      geom_line(data = firstgen_pred, aes(x = Emotions_4, y = z_aveExam, color = FirstGen), size = 1) +
+      geom_line(data = overall_pred, aes(x = Emotions_4, y = z_aveExam), 
+                color = "black", linetype = "dashed") +
+      labs(
+        title = "Anxiety vs. Exam Performance by First-Generation Status",
+        subtitle = "Controlling for Class Random Effects",
+        x = "Anxiety Level (Emotions_4)",
+        y = "Z-Score (Average Exam)",
+        color = "First-Gen Status"
+      ) +
+      theme_minimal() +
+      scale_color_brewer(palette = "Set2") +
+      ylim(-1, 1) # Set consistent y-axis limits
+    
+    print(firstgen_plot)
+  }
+}, error = function(e) {
+  warning(paste("Could not generate firstgen plot:", e$message))
+})
+
+# Test for significant differences in slopes (interactions)
+print("Testing for significant slope differences between groups:")
+
+# Extract p-values for interactions
+extract_interaction_pvalues <- function(model_list) {
+  if (is.null(model_list) || is.null(model_list[["interaction"]]) || is.null(model_list[["interaction"]]$summary)) {
+    return(NA)
+  }
+  
+  coefs <- model_list[["interaction"]]$summary$coefficients
+  interaction_rows <- grep(":", rownames(coefs))
+  
+  if (length(interaction_rows) == 0) {
+    return(NA)
+  }
+  
+  p_values <- coefs[interaction_rows, "Pr(>|t|)"]
+  return(p_values)
+}
+
+# Print p-values for interactions
+if (!is.null(gender_models)) {
+  gender_p <- extract_interaction_pvalues(gender_models)
+  print("Gender interaction p-values:")
+  print(gender_p)
+}
+
+if (!is.null(race_models)) {
+  race_p <- extract_interaction_pvalues(race_models)
+  print("Race interaction p-values:")
+  print(race_p)
+}
+
+if (!is.null(firstgen_models)) {
+  firstgen_p <- extract_interaction_pvalues(firstgen_models)
+  print("First-generation interaction p-values:")
+  print(firstgen_p)
+}
+```
+```{r}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(car)       # For Levene's test
+library(FSA)       # For Dunn's test
+
+# Add demographic variables
+data <- add.All(data)
+
+# Filter to non-missing values for anxiety and demographic variables
+analysis_data <- data %>%
+  filter(!is.na(Emotions_4))
+
+# DESCRIPTIVE STATISTICS
+# -------------------------
+
+# Calculate mean, median, sd, and quantiles by group
+for (demo_var in demographic_vars) {
+  # Skip if variable doesn't exist
+  if (!demo_var %in% names(analysis_data)) {
+    warning(paste0("Variable ", demo_var, " not found in data"))
+    next
+  }
+  
+  # Calculate statistics by group
+  stats_by_group <- analysis_data %>%
+    filter(!is.na(get(demo_var))) %>%
+    group_by(across(all_of(demo_var))) %>%
+    summarize(
+      n = n(),
+      mean = mean(Emotions_4, na.rm = TRUE),
+      sd = sd(Emotions_4, na.rm = TRUE),
+      median = median(Emotions_4, na.rm = TRUE),
+      q25 = quantile(Emotions_4, 0.25, na.rm = TRUE),
+      q75 = quantile(Emotions_4, 0.75, na.rm = TRUE),
+      min = min(Emotions_4, na.rm = TRUE),
+      max = max(Emotions_4, na.rm = TRUE)
+    )
+  
+  # Print statistics
+  cat("\nAnxiety Statistics by", demo_var, ":\n")
+  print(stats_by_group)
+}
+
+
+
+# STATISTICAL TESTS FOR GROUP DIFFERENCES
+# ------------------------------------------
+
+# Function to perform appropriate statistical tests
+test_group_differences <- function(data, demo_var) {
+  # Skip if variable doesn't exist
+  if (!demo_var %in% names(data)) {
+    warning(paste0("Variable ", demo_var, " not found in data"))
+    return(NULL)
+  }
+  
+  # Filter to non-missing values for this demographic
+  demo_data <- data %>%
+    filter(!is.na(get(demo_var)))
+  
+  # Get number of groups
+  groups <- unique(demo_data[[demo_var]])
+  groups <- groups[!is.na(groups)]
+  n_groups <- length(groups)
+  
+  # Set up formula for tests
+  formula <- as.formula(paste0("Emotions_4 ~ ", demo_var))
+  
+  # Results list
+  results <- list()
+  
+  # 1. Test for normality within each group
+  cat("\nTesting normality within each", demo_var, "group:\n")
+  for (group in groups) {
+    group_data <- demo_data[demo_data[[demo_var]] == group, ]
+    shapiro_test <- shapiro.test(group_data$Emotions_4)
+    cat(group, "Shapiro-Wilk test: W =", shapiro_test$statistic, 
+        ", p =", shapiro_test$p.value, "\n")
+    
+    results$normality[[group]] <- shapiro_test
+  }
+  
+  # 2. Test for homogeneity of variance
+  levene_test <- leveneTest(formula, data = demo_data)
+  cat("\nLevene's test for homogeneity of variance:\n")
+  print(levene_test)
+  results$levene <- levene_test
+  
+  # 3. Perform appropriate test based on number of groups and assumptions
+  if (n_groups == 2) {
+    # If only 2 groups, use t-test or Wilcoxon
+    if (all(sapply(results$normality, function(x) x$p.value > 0.05)) && 
+        levene_test$`Pr(>F)`[1] > 0.05) {
+      # Parametric: t-test
+      t_test <- t.test(formula, data = demo_data, var.equal = TRUE)
+      cat("\nTwo-sample t-test:\n")
+      print(t_test)
+      results$main_test <- t_test
+    } else {
+      # Non-parametric: Wilcoxon rank-sum test
+      wilcox_test <- wilcox.test(formula, data = demo_data)
+      cat("\nWilcoxon rank-sum test:\n")
+      print(wilcox_test)
+      results$main_test <- wilcox_test
+    }
+  } else {
+    # If more than 2 groups, use ANOVA or Kruskal-Wallis
+    if (all(sapply(results$normality, function(x) x$p.value > 0.05)) && 
+        levene_test$`Pr(>F)`[1] > 0.05) {
+      # Parametric: ANOVA
+      anova_test <- aov(formula, data = demo_data)
+      cat("\nANOVA:\n")
+      print(summary(anova_test))
+      results$main_test <- anova_test
+      
+      # Post-hoc test if ANOVA is significant
+      if (summary(anova_test)[[1]][["Pr(>F)"]][1] < 0.05) {
+        tukey_test <- TukeyHSD(anova_test)
+        cat("\nTukey's HSD post-hoc test:\n")
+        print(tukey_test)
+        results$post_hoc <- tukey_test
+      }
+    } else {
+      # Non-parametric: Kruskal-Wallis
+      kw_test <- kruskal.test(formula, data = demo_data)
+      cat("\nKruskal-Wallis test:\n")
+      print(kw_test)
+      results$main_test <- kw_test
+      
+      # Post-hoc test if Kruskal-Wallis is significant
+      if (kw_test$p.value < 0.05) {
+        dunn_test <- dunnTest(formula, data = demo_data, method = "bh")
+        cat("\nDunn's post-hoc test:\n")
+        print(dunn_test)
+        results$post_hoc <- dunn_test
+      }
+    }
+  }
+  
+  return(results)
+}
+
+# Perform statistical tests for each demographic variable
+test_results <- list()
+
+for (demo_var in demographic_vars) {
+  cat("\n\n===============================================\n")
+  cat("STATISTICAL TESTS FOR", demo_var, "\n")
+  cat("===============================================\n")
+  
+  test_results[[demo_var]] <- test_group_differences(analysis_data, demo_var)
+}
+
+# EFFECT SIZE CALCULATION
+# --------------------------
+
+# Function to calculate effect size
+calculate_effect_size <- function(data, demo_var) {
+  # Skip if variable doesn't exist
+  if (!demo_var %in% names(data)) {
+    warning(paste0("Variable ", demo_var, " not found in data"))
+    return(NULL)
+  }
+  
+  # Filter to non-missing values
+  demo_data <- data %>%
+    filter(!is.na(get(demo_var)))
+  
+  # Get groups
+  groups <- unique(demo_data[[demo_var]])
+  groups <- groups[!is.na(groups)]
+  n_groups <- length(groups)
+  
+  if (n_groups == 2) {
+    # For two groups, calculate Cohen's d
+    g1 <- demo_data[demo_data[[demo_var]] == groups[1], "Emotions_4"]
+    g2 <- demo_data[demo_data[[demo_var]] == groups[2], "Emotions_4"]
+    
+    # Calculate mean difference
+    mean_diff <- mean(g1, na.rm = TRUE) - mean(g2, na.rm = TRUE)
+    
+    # Calculate pooled standard deviation
+    n1 <- length(g1)
+    n2 <- length(g2)
+    sd1 <- sd(g1, na.rm = TRUE)
+    sd2 <- sd(g2, na.rm = TRUE)
+    
+    sd_pooled <- sqrt(((n1 - 1) * sd1^2 + (n2 - 1) * sd2^2) / (n1 + n2 - 2))
+    
+    # Cohen's d
+    d <- mean_diff / sd_pooled
+    
+    cat("\nEffect size (Cohen's d) for", demo_var, ":", d, "\n")
+    cat("Interpretation: |d| < 0.2 (negligible), |d| < 0.5 (small), |d| < 0.8 (medium), |d| >= 0.8 (large)\n")
+    
+    return(list(type = "Cohen's d", value = d))
+  } else {
+    # For more than two groups, calculate eta-squared from ANOVA
+    formula <- as.formula(paste0("Emotions_4 ~ ", demo_var))
+    anova_model <- aov(formula, data = demo_data)
+    anova_table <- summary(anova_model)[[1]]
+    
+    # Calculate eta-squared
+    eta_squared <- anova_table[1, "Sum Sq"] / sum(anova_table[, "Sum Sq"])
+    
+    cat("\nEffect size (eta-squared) for", demo_var, ":", eta_squared, "\n")
+    cat("Interpretation: η² < 0.01 (negligible), η² < 0.06 (small), η² < 0.14 (medium), η² >= 0.14 (large)\n")
+    
+    return(list(type = "eta-squared", value = eta_squared))
+  }
+}
+
+# Calculate effect sizes
+effect_sizes <- list()
+
+for (demo_var in demographic_vars) {
+  effect_sizes[[demo_var]] <- calculate_effect_size(analysis_data, demo_var)
+}
+```
+
+
+```{r}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+library(forcats)
+
+# Source the IdenGroups.R file from the Anxiety directory
+#source("Anxiety/IdenGroups.R")
+
+# Read your data
+data <- read.csv("MASTER_MERGE_new.csv")
+
+# Add demographic variables
+data <- add.All(data)
+
+# Filter to non-missing anxiety values
+analysis_data <- data %>%
+  filter(!is.na(Emotions_4))
+
+# Define demographic variables to analyze
+demographic_vars <- c("race_cat", "gender_cat", "FirstGen")
+
+# Create categorical version of anxiety for counts
+analysis_data$Anxiety_Cat <- cut(analysis_data$Emotions_4, 
+                                breaks = c(0, 1.5, 2.5, 3.5, 4.5, 5.5),
+                                labels = c("Very Low (1)", "Low (2)", "Moderate (3)", 
+                                          "High (4)", "Very High (5)"),
+                                include.lowest = TRUE)
+
+# Function to create normalized stacked bar charts
+create_anxiety_distribution <- function(data, demo_var) {
+  # Skip if variable doesn't exist
+  if (!demo_var %in% names(data)) {
+    warning(paste0("Variable ", demo_var, " not found in data"))
+    return(NULL)
+  }
+  
+  # Filter to non-missing values for this demographic
+  demo_data <- data %>%
+    filter(!is.na(get(demo_var)))
+  
+  # Calculate mean anxiety by group for ordering
+  mean_anxiety <- demo_data %>%
+    group_by(get(demo_var)) %>%
+    summarize(mean_anxiety = mean(Emotions_4, na.rm = TRUE)) %>%
+    rename(Group = `get(demo_var)`)
+  
+  # Calculate percentages by group
+  pct_data <- demo_data %>%
+    group_by(get(demo_var), Anxiety_Cat) %>%
+    summarize(count = n(), .groups = "drop") %>%
+    rename(Group = `get(demo_var)`) %>%
+    group_by(Group) %>%
+    mutate(
+      total = sum(count),
+      percentage = count / total * 100
+    )
+  
+  # Join mean anxiety for ordering
+  pct_data <- pct_data %>%
+    left_join(mean_anxiety, by = "Group")
+  
+  # Reorder Group factor by mean anxiety (low to high)
+  pct_data$Group <- factor(pct_data$Group, 
+                          levels = mean_anxiety$Group[order(mean_anxiety$mean_anxiety)])
+  
+  # Create stacked bar chart showing percentages
+  p_stacked <- ggplot(pct_data, aes(x = Group, y = percentage, fill = Anxiety_Cat)) +
+    geom_bar(stat = "identity", position = "stack") +
+    geom_text(aes(label = ifelse(percentage > 5, 
+                                 sprintf("%.1f%%", percentage), "")),
+              position = position_stack(vjust = 0.5),
+              size = 3) +
+    labs(
+      title = paste0("Anxiety Level Distribution by ", demo_var),
+      subtitle = "Groups ordered from lowest to highest mean anxiety",
+      x = demo_var,
+      y = "Percentage",
+      fill = "Anxiety Level"
+    ) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_fill_brewer(palette = "RdYlBu", direction = -1)
+  
+  # Create side-by-side bar chart for direct comparison
+  p_side <- ggplot(pct_data, aes(x = Anxiety_Cat, y = percentage, fill = Group)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(
+      title = paste0("Anxiety Level Distribution by ", demo_var),
+      subtitle = "Groups ordered from lowest to highest mean anxiety",
+      x = "Anxiety Level",
+      y = "Percentage",
+      fill = demo_var
+    ) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Create mean comparison plot with ordered groups
+  mean_plot <- ggplot(mean_anxiety, aes(x = Group, y = mean_anxiety, fill = Group)) +
+    geom_bar(stat = "identity") +
+    labs(
+      title = paste0("Mean Anxiety by ", demo_var),
+      subtitle = "Groups ordered from lowest to highest mean anxiety",
+      x = demo_var,
+      y = "Mean Anxiety Level (Emotions_4)"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "none"
+    )
+  
+  # Calculate high anxiety percentages by group
+  high_anxiety_data <- demo_data %>%
+    mutate(high_anxiety = Emotions_4 >= 4) %>%
+    group_by(get(demo_var)) %>%
+    summarize(
+      n = n(),
+      pct_high = mean(high_anxiety, na.rm = TRUE) * 100,
+      se = sqrt((pct_high/100 * (1-pct_high/100)) / n) * 100,
+      ci_lower = pct_high - 1.96 * se,
+      ci_upper = pct_high + 1.96 * se,
+      .groups = "drop"
+    ) %>%
+    rename(Group = `get(demo_var)`) %>%
+    left_join(mean_anxiety, by = "Group")
+  
+  # Reorder Group factor by mean anxiety
+  high_anxiety_data$Group <- factor(high_anxiety_data$Group, 
+                                  levels = mean_anxiety$Group[order(mean_anxiety$mean_anxiety)])
+  
+  # Create high anxiety bar chart
+  p_high <- ggplot(high_anxiety_data, aes(x = Group, y = pct_high, fill = Group)) +
+    geom_bar(stat = "identity") +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+    geom_text(aes(label = sprintf("%.1f%%", pct_high)), vjust = -0.5) +
+    labs(
+      title = paste0("Percentage with High Anxiety by ", demo_var),
+      subtitle = "High anxiety defined as 4-5 on scale. Groups ordered by mean anxiety.",
+      x = demo_var,
+      y = "Percentage with High Anxiety"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "none"
+    ) +
+    ylim(0, max(high_anxiety_data$ci_upper) * 1.1) # Add space for labels
+  
+  # Return all plots
+  return(list(stacked = p_stacked, mean = mean_plot, high = p_high))
+}
+
+# Create visualizations for each demographic variable
+for (demo_var in demographic_vars) {
+  plots <- create_anxiety_distribution(analysis_data, demo_var)
+  
+  if (!is.null(plots)) {
+    # Print plots
+    print(plots$stacked)
+    print(plots$mean)
+    print(plots$high)
+  }
+}
+
+# Create a consolidated visualization showing high anxiety across all demographics in one plot
+create_combined_high_anxiety_viz <- function(data, demographic_vars) {
+  # Create empty dataframe to store results
+  all_groups_data <- data.frame()
+  
+  # Process each demographic variable
+  for (demo_var in demographic_vars) {
+    # Skip if variable doesn't exist
+    if (!demo_var %in% names(data)) {
+      warning(paste0("Variable ", demo_var, " not found in data"))
+      next
+    }
+    
+    # Filter to non-missing values for this demographic
+    demo_data <- data %>%
+      filter(!is.na(get(demo_var)))
+    
+    # Calculate high anxiety percentages by group
+    high_anxiety_data <- demo_data %>%
+      mutate(high_anxiety = Emotions_4 >= 4) %>%
+      group_by(get(demo_var)) %>%
+      summarize(
+        n = n(),
+        pct_high = mean(high_anxiety, na.rm = TRUE) * 100,
+        se = sqrt((pct_high/100 * (1-pct_high/100)) / n) * 100,
+        ci_lower = pct_high - 1.96 * se,
+        ci_upper = pct_high + 1.96 * se,
+        .groups = "drop"
+      ) %>%
+      rename(Group = `get(demo_var)`) %>%
+      mutate(DemoVar = demo_var)
+    
+    # Add to combined dataframe
+    all_groups_data <- rbind(all_groups_data, high_anxiety_data)
+  }
+  
+  # If no data was collected, return NULL
+  if (nrow(all_groups_data) == 0) {
+    return(NULL)
+  }
+  
+  # Create combined Group label
+  all_groups_data$GroupLabel <- paste(all_groups_data$DemoVar, all_groups_data$Group, sep = ": ")
+  
+  # Order by percentage of high anxiety
+  all_groups_data$GroupLabel <- factor(all_groups_data$GroupLabel,
+                                     levels = all_groups_data$GroupLabel[order(all_groups_data$pct_high)])
+  
+  # Create bar chart
+  p <- ggplot(all_groups_data, aes(x = GroupLabel, y = pct_high, fill = DemoVar)) +
+    geom_bar(stat = "identity") +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+    geom_text(aes(label = sprintf("%.1f%%", pct_high)), hjust = -0.2) +
+    labs(
+      title = "Percentage of Students Reporting High Anxiety Across Demographics",
+      subtitle = "High anxiety defined as 4 or 5 on the anxiety scale",
+      x = "",
+      y = "Percentage with High Anxiety",
+      fill = "Demographic Variable"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.y = element_text(size = 8),
+      legend.position = "bottom"
+    ) +
+    coord_flip() +
+    xlim(rev(levels(all_groups_data$GroupLabel))) # Reverse order for better readability
+  
+  return(p)
+}
+
+# Create combined high anxiety visualization
+combined_plot <- create_combined_high_anxiety_viz(analysis_data, demographic_vars)
+if (!is.null(combined_plot)) {
+  print(combined_plot)
+}
+
+```
