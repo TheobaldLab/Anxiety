@@ -1,0 +1,97 @@
+===============================================================
+ANALYSIS OF CONFUSED ACROSS INTERSECTIONAL IDENTITIES
+===============================================================
+
+Overall Mean: 3.236 
+
+MAIN EFFECTS:
+
+By Race:
+
+By Gender:
+
+By First-Generation Status:
+
+
+ANOVA RESULTS FOR THREE-WAY INTERSECTION:
+              Df Sum Sq Mean Sq F value Pr(>F)    
+three_way     20    219  10.936   11.13 <2e-16 ***
+Residuals   5665   5568   0.983                   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+FORMAL TEST OF THREE-WAY INTERACTION EFFECT:
+Analysis of Variance Table
+
+Response: Emotions_3
+                               Df Sum Sq Mean Sq F value    Pr(>F)    
+race_cat                        3   63.3  21.095 21.4792 7.891e-14 ***
+gender_cat                      2  128.9  64.473 65.6473 < 2.2e-16 ***
+FirstGen                        1   19.1  19.105 19.4532 1.050e-05 ***
+race_cat:gender_cat             6    1.9   0.316  0.3218    0.9259    
+race_cat:FirstGen               3    0.6   0.190  0.1935    0.9008    
+gender_cat:FirstGen             2    4.1   2.045  2.0824    0.1247    
+race_cat:gender_cat:FirstGen    6    2.2   0.362  0.3681    0.8995    
+Residuals                    5676 5574.5   0.982                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+GROUPS WITH HIGHEST CONFUSED LEVELS:
+
+
+GROUPS WITH LOWEST CONFUSED LEVELS:
+
+
+GROUPS WITH CONFUSED HIGHER THAN EXPECTED:
+
+
+GROUPS WITH CONFUSED LOWER THAN EXPECTED:
+
+
+SIGNIFICANT PAIRWISE DIFFERENCES (p < 0.05, showing first 20):
+ contrast                                                                              estimate
+ Hispanic × Female × First Generation - Non URM × Male × Continuing Generation        0.6192568
+ Non URM × Female × First Generation - Non URM × Male × Continuing Generation         0.4834530
+ Non URM × Female × Continuing Generation - Non URM × Male × Continuing Generation    0.3161914
+ Non URM × Male × Continuing Generation - Other URM × Female × Continuing Generation -0.4961790
+ Non URM × Male × Continuing Generation - Other URM × Female × First Generation      -0.6071655
+ Black × Female × First Generation - Non URM × Male × Continuing Generation           0.7974881
+ Black × Female × Continuing Generation - Non URM × Male × Continuing Generation      0.6474881
+ Hispanic × Female × First Generation - Non URM × Male × First Generation             0.4665775
+ Black × Female × First Generation - Non URM × Male × First Generation                0.6448087
+ Hispanic × Female × First Generation - Non URM × Nonbinary × Continuing Generation   0.4888037
+ Hispanic × Female × First Generation - Other URM × Male × Continuing Generation      0.4998873
+ Non URM × Male × First Generation - Other URM × Female × First Generation           -0.4544862
+ Black × Female × First Generation - Other URM × Male × Continuing Generation         0.6781186
+ Black × Female × First Generation - Non URM × Nonbinary × Continuing Generation      0.6670350
+ Non URM × Female × First Generation - Non URM × Male × First Generation              0.3307737
+ Black × Female × First Generation - Non URM × Nonbinary × First Generation           0.8294872
+ Non URM × Nonbinary × Continuing Generation - Other URM × Female × First Generation -0.4767124
+ Other URM × Female × First Generation - Other URM × Male × Continuing Generation     0.4877960
+ Hispanic × Female × First Generation - Non URM × Female × Continuing Generation      0.3030654
+ Hispanic × Female × Continuing Generation - Non URM × Male × Continuing Generation   0.4316762
+         SE   df t.ratio p.value
+ 0.07080267 5665   8.746  <.0001
+ 0.05220581 5665   9.261  <.0001
+ 0.03874860 5665   8.160  <.0001
+ 0.06301280 5665  -7.874  <.0001
+ 0.07928214 5665  -7.658  <.0001
+ 0.11877288 5665   6.714  <.0001
+ 0.11270661 5665   5.745  <.0001
+ 0.08505788 5665   5.485  <.0001
+ 0.12778427 5665   5.046  0.0001
+ 0.09717368 5665   5.030  0.0001
+ 0.10021192 5665   4.988  0.0001
+ 0.09223601 5665  -4.927  0.0002
+ 0.13833440 5665   4.902  0.0002
+ 0.13614955 5665   4.899  0.0002
+ 0.07033684 5665   4.703  0.0005
+ 0.17891045 5665   4.636  0.0007
+ 0.10351503 5665  -4.605  0.0008
+ 0.10637231 5665   4.586  0.0009
+ 0.06717540 5665   4.512  0.0012
+ 0.09696530 5665   4.452  0.0016
+
+P value adjustment: tukey method for comparing a family of 21 estimates 

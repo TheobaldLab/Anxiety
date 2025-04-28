@@ -1,0 +1,75 @@
+===============================================================
+ANALYSIS OF SURPRISED ACROSS INTERSECTIONAL IDENTITIES
+===============================================================
+
+Overall Mean: 2.687 
+
+MAIN EFFECTS:
+
+By Race:
+
+By Gender:
+
+By First-Generation Status:
+
+
+ANOVA RESULTS FOR THREE-WAY INTERSECTION:
+              Df Sum Sq Mean Sq F value   Pr(>F)    
+three_way     20     70   3.491   3.715 4.11e-08 ***
+Residuals   5668   5327   0.940                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+FORMAL TEST OF THREE-WAY INTERACTION EFFECT:
+Analysis of Variance Table
+
+Response: Emotions_7
+                               Df Sum Sq Mean Sq F value    Pr(>F)    
+race_cat                        3   23.3  7.7745  8.2685 1.738e-05 ***
+gender_cat                      2    7.3  3.6649  3.8978   0.02034 *  
+FirstGen                        1   17.1 17.1482 18.2379 1.981e-05 ***
+race_cat:gender_cat             6    3.1  0.5085  0.5409   0.77748    
+race_cat:FirstGen               3    5.4  1.7839  1.8973   0.12774    
+gender_cat:FirstGen             2    0.6  0.3048  0.3241   0.72317    
+race_cat:gender_cat:FirstGen    6   14.3  2.3801  2.5313   0.01895 *  
+Residuals                    5678 5338.7  0.9403                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+GROUPS WITH HIGHEST SURPRISED LEVELS:
+
+
+GROUPS WITH LOWEST SURPRISED LEVELS:
+
+
+GROUPS WITH SURPRISED HIGHER THAN EXPECTED:
+
+
+GROUPS WITH SURPRISED LOWER THAN EXPECTED:
+
+
+SIGNIFICANT PAIRWISE DIFFERENCES (p < 0.05, showing first 20):
+ contrast                                                                           estimate
+ Hispanic × Male × First Generation - Non URM × Female × Continuing Generation     0.5355247
+ Black × Female × Continuing Generation - Hispanic × Male × First Generation      -0.7427791
+ Hispanic × Male × First Generation - Non URM × Nonbinary × Continuing Generation  0.6035849
+ Hispanic × Male × First Generation - Non URM × Male × Continuing Generation       0.4629021
+ Hispanic × Male × First Generation - Other URM × Female × Continuing Generation   0.4898833
+ Hispanic × Male × First Generation - Non URM × Female × First Generation          0.4317515
+ Hispanic × Female × First Generation - Non URM × Female × Continuing Generation   0.2503319
+ Hispanic × Male × Continuing Generation - Hispanic × Male × First Generation     -0.5694160
+ Black × Female × Continuing Generation - Hispanic × Female × First Generation    -0.4575863
+         SE   df t.ratio p.value
+ 0.09045712 5668   5.920  <.0001
+ 0.13745176 5668  -5.404  <.0001
+ 0.11343770 5668   5.321  <.0001
+ 0.09305950 5668   4.974  0.0001
+ 0.10259824 5668   4.775  0.0004
+ 0.09671013 5668   4.464  0.0015
+ 0.06545026 5668   3.825  0.0207
+ 0.14963143 5668  -3.805  0.0222
+ 0.12245094 5668  -3.737  0.0284
+
+P value adjustment: tukey method for comparing a family of 21 estimates 

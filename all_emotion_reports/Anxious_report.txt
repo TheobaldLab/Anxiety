@@ -1,0 +1,97 @@
+===============================================================
+ANALYSIS OF ANXIOUS ACROSS INTERSECTIONAL IDENTITIES
+===============================================================
+
+Overall Mean: 2.914 
+
+MAIN EFFECTS:
+
+By Race:
+
+By Gender:
+
+By First-Generation Status:
+
+
+ANOVA RESULTS FOR THREE-WAY INTERSECTION:
+              Df Sum Sq Mean Sq F value Pr(>F)    
+three_way     20    253  12.671   8.693 <2e-16 ***
+Residuals   5672   8268   1.458                   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+FORMAL TEST OF THREE-WAY INTERACTION EFFECT:
+Analysis of Variance Table
+
+Response: Emotions_4
+                               Df Sum Sq Mean Sq F value    Pr(>F)    
+race_cat                        3   33.3  11.093  7.6133 4.453e-05 ***
+gender_cat                      2  156.0  77.998 53.5298 < 2.2e-16 ***
+FirstGen                        1   32.7  32.720 22.4555 2.203e-06 ***
+race_cat:gender_cat             6   20.7   3.455  2.3712   0.02733 *  
+race_cat:FirstGen               3    4.9   1.621  1.1122   0.34267    
+gender_cat:FirstGen             2    4.4   2.181  1.4971   0.22386    
+race_cat:gender_cat:FirstGen    6    3.3   0.551  0.3785   0.89314    
+Residuals                    5683 8280.7   1.457                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+GROUPS WITH HIGHEST ANXIOUS LEVELS:
+
+
+GROUPS WITH LOWEST ANXIOUS LEVELS:
+
+
+GROUPS WITH ANXIOUS HIGHER THAN EXPECTED:
+
+
+GROUPS WITH ANXIOUS LOWER THAN EXPECTED:
+
+
+SIGNIFICANT PAIRWISE DIFFERENCES (p < 0.05, showing first 20):
+ contrast                                                                                
+ Non URM × Female × First Generation - Non URM × Male × Continuing Generation            
+ Non URM × Male × Continuing Generation - Other URM × Female × Continuing Generation     
+ Non URM × Female × Continuing Generation - Non URM × Male × Continuing Generation       
+ Hispanic × Female × First Generation - Non URM × Male × Continuing Generation           
+ Non URM × Male × Continuing Generation - Other URM × Female × First Generation          
+ Non URM × Female × First Generation - Other URM × Male × Continuing Generation          
+ Other URM × Female × Continuing Generation - Other URM × Male × Continuing Generation   
+ Black × Female × First Generation - Non URM × Male × Continuing Generation              
+ Other URM × Female × First Generation - Other URM × Male × Continuing Generation        
+ Black × Female × First Generation - Other URM × Male × Continuing Generation            
+ Hispanic × Female × First Generation - Other URM × Male × Continuing Generation         
+ Black × Female × Continuing Generation - Non URM × Male × Continuing Generation         
+ Black × Female × Continuing Generation - Other URM × Male × Continuing Generation       
+ Non URM × Male × Continuing Generation - Non URM × Nonbinary × Continuing Generation    
+ Non URM × Male × Continuing Generation - Other URM × Nonbinary × Continuing Generation  
+ Non URM × Female × Continuing Generation - Other URM × Male × Continuing Generation     
+ Non URM × Female × Continuing Generation - Non URM × Female × First Generation          
+ Non URM × Female × First Generation - Non URM × Male × First Generation                 
+ Other URM × Male × Continuing Generation - Other URM × Nonbinary × Continuing Generation
+ Black × Female × First Generation - Other URM × Male × First Generation                 
+   estimate         SE   df t.ratio p.value
+  0.5557602 0.06356258 5672   8.744  <.0001
+ -0.5755417 0.07646680 5672  -7.527  <.0001
+  0.3305828 0.04716672 5672   7.009  <.0001
+  0.5465834 0.08593247 5672   6.361  <.0001
+ -0.5876787 0.09653927 5672  -6.087  <.0001
+  0.6171349 0.10723851 5672   5.755  <.0001
+  0.6369164 0.11535626 5672   5.521  <.0001
+  0.7832614 0.14553749 5672   5.382  <.0001
+  0.6490534 0.12953658 5672   5.011  0.0001
+  0.8446360 0.16923668 5672   4.991  0.0001
+  0.6079581 0.12183713 5672   4.990  0.0001
+  0.6310735 0.13724477 5672   4.598  0.0008
+  0.6924481 0.16216048 5672   4.270  0.0036
+ -0.3938940 0.09742726 5672  -4.043  0.0091
+ -0.5782163 0.14463235 5672  -3.998  0.0108
+  0.3919574 0.09841034 5672   3.983  0.0114
+ -0.2251774 0.05743813 5672  -3.920  0.0145
+  0.3279264 0.08565381 5672   3.829  0.0205
+ -0.6395910 0.16845893 5672  -3.797  0.0230
+  0.7236165 0.19248772 5672   3.759  0.0263
+
+P value adjustment: tukey method for comparing a family of 21 estimates 

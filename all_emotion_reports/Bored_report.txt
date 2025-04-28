@@ -1,0 +1,59 @@
+===============================================================
+ANALYSIS OF BORED ACROSS INTERSECTIONAL IDENTITIES
+===============================================================
+
+Overall Mean: 2.523 
+
+MAIN EFFECTS:
+
+By Race:
+
+By Gender:
+
+By First-Generation Status:
+
+
+ANOVA RESULTS FOR THREE-WAY INTERSECTION:
+              Df Sum Sq Mean Sq F value   Pr(>F)    
+three_way     20     50  2.4801   2.548 0.000169 ***
+Residuals   5669   5518  0.9733                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+FORMAL TEST OF THREE-WAY INTERACTION EFFECT:
+Analysis of Variance Table
+
+Response: Emotions_6
+                               Df Sum Sq Mean Sq F value    Pr(>F)    
+race_cat                        3   28.1  9.3625  9.6230 2.469e-06 ***
+gender_cat                      2    4.2  2.1082  2.1668   0.11463    
+FirstGen                        1    3.5  3.4502  3.5462   0.05973 .  
+race_cat:gender_cat             6    2.6  0.4310  0.4430   0.85035    
+race_cat:FirstGen               3    1.8  0.5885  0.6049   0.61180    
+gender_cat:FirstGen             2    7.4  3.7149  3.8183   0.02202 *  
+race_cat:gender_cat:FirstGen    6    3.0  0.5064  0.5204   0.79327    
+Residuals                    5680 5526.3  0.9729                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+GROUPS WITH HIGHEST BORED LEVELS:
+
+
+GROUPS WITH LOWEST BORED LEVELS:
+
+
+GROUPS WITH BORED HIGHER THAN EXPECTED:
+
+
+GROUPS WITH BORED LOWER THAN EXPECTED:
+
+
+SIGNIFICANT PAIRWISE DIFFERENCES (p < 0.05, showing first 20):
+ contrast                                                                        estimate
+ Hispanic × Female × First Generation - Non URM × Male × Continuing Generation -0.2622394
+         SE   df t.ratio p.value
+ 0.07021872 5669  -3.735  0.0287
+
+P value adjustment: tukey method for comparing a family of 21 estimates 

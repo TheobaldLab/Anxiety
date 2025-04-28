@@ -1,0 +1,59 @@
+===============================================================
+ANALYSIS OF EXCITED ACROSS INTERSECTIONAL IDENTITIES
+===============================================================
+
+Overall Mean: 2.88 
+
+MAIN EFFECTS:
+
+By Race:
+
+By Gender:
+
+By First-Generation Status:
+
+
+ANOVA RESULTS FOR THREE-WAY INTERSECTION:
+              Df Sum Sq Mean Sq F value   Pr(>F)    
+three_way     20     52  2.5897   2.778 3.61e-05 ***
+Residuals   5667   5283  0.9323                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+FORMAL TEST OF THREE-WAY INTERACTION EFFECT:
+Analysis of Variance Table
+
+Response: Emotions_2
+                               Df Sum Sq Mean Sq F value    Pr(>F)    
+race_cat                        3   18.7  6.2246  6.6730 0.0001709 ***
+gender_cat                      2   20.4 10.1798 10.9131  1.86e-05 ***
+FirstGen                        1    2.1  2.0965  2.2475 0.1338821    
+race_cat:gender_cat             6    3.1  0.5230  0.5607 0.7619198    
+race_cat:FirstGen               3    1.7  0.5551  0.5951 0.6181915    
+gender_cat:FirstGen             2    3.3  1.6668  1.7869 0.1675807    
+race_cat:gender_cat:FirstGen    6    7.0  1.1617  1.2454 0.2795665    
+Residuals                    5678 5296.5  0.9328                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+GROUPS WITH HIGHEST EXCITED LEVELS:
+
+
+GROUPS WITH LOWEST EXCITED LEVELS:
+
+
+GROUPS WITH EXCITED HIGHER THAN EXPECTED:
+
+
+GROUPS WITH EXCITED LOWER THAN EXPECTED:
+
+
+SIGNIFICANT PAIRWISE DIFFERENCES (p < 0.05, showing first 20):
+ contrast                                                                            estimate
+ Non URM × Female × Continuing Generation - Non URM × Male × Continuing Generation -0.1353384
+         SE   df t.ratio p.value
+ 0.03773429 5667  -3.587  0.0475
+
+P value adjustment: tukey method for comparing a family of 21 estimates 
