@@ -1,0 +1,583 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+# Basic script to analyze anxiety vs. exam performance relationship
+# Uses only base R and ggplot2 with no tidyverse dependencies
+
+# Load ggplot2 for visualization
+library(ggplot2)
+
+# Read the data
+data <- read.csv("MASTER_MERGE_new.csv", stringsAsFactors = FALSE)
+
+# Define minimum class size
+min_class_size <- 30 # Classes with fewer rows will be excluded
+
+# Get classes with sufficient sample size
+class_counts <- table(data$Class)
+valid_classes <- names(class_counts[class_counts >= min_class_size])
+
+# Setup output data frame
+results_summary <- data.frame(
+  Class = character(),
+  n = integer(),
+  Linear_R2 = numeric(),
+  Linear_p = numeric(),
+  Quadratic_R2 = numeric(),
+  Quadratic_p_squared = numeric(),
+  Linear_AIC = numeric(),
+  Quadratic_AIC = numeric(),
+  Best_Model = character(),
+  stringsAsFactors = FALSE
+)
+
+# Create PDF for plots
+pdf("anxiety_exam_analysis.pdf", width = 10, height = 8)
+
+# Plot overall relationship first
+all_data <- data.frame(
+  Emotions_4 = data$Emotions_4,
+  z_aveExam = data$z_aveExam
+)
+all_data <- all_data[complete.cases(all_data), ]
+
+# Fit models on overall data
+overall_linear <- lm(z_aveExam ~ Emotions_4, data = all_data)
+overall_quadratic <- lm(z_aveExam ~ Emotions_4 + I(Emotions_4^2), data = all_data)
+
+# Create overall plot
+p_overall <- ggplot(all_data, aes(x = Emotions_4, y = z_aveExam)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "blue", se = TRUE) +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2), color = "red", se = TRUE) +
+  labs(
+    title = "Overall Relationship Between Anxiety and Exam Performance",
+    x = "Anxiety Level (Emotions_4)",
+    y = "Exam Z-Score"
+  ) +
+  theme_minimal()
+
+print(p_overall)
+
+# Calculate AIC values
+aic_linear <- AIC(overall_linear)
+aic_quadratic <- AIC(overall_quadratic)
+
+cat("Overall Analysis:\n")
+cat("Linear model R²:", round(summary(overall_linear)$r.squared, 4), "\n")
+cat("Linear model p-value:", round(summary(overall_linear)$coefficients[2, 4], 4), "\n")
+cat("Linear model AIC:", round(aic_linear, 2), "\n\n")
+
+cat("Quadratic model R²:", round(summary(overall_quadratic)$r.squared, 4), "\n")
+cat("Quadratic term p-value:", round(summary(overall_quadratic)$coefficients[3, 4], 4), "\n")
+cat("Quadratic model AIC:", round(aic_quadratic, 2), "\n\n")
+
+if (aic_linear < aic_quadratic) {
+  cat("Best overall model: Linear\n\n")
+} else {
+  cat("Best overall model: Quadratic\n\n")
+}
+
+# Create boxplot by anxiety level
+p_boxplot <- ggplot(all_data, aes(x = factor(Emotions_4), y = z_aveExam)) +
+  geom_boxplot() +
+  labs(
+    title = "Exam Performance by Anxiety Level Category",
+    x = "Anxiety Level (Emotions_4)",
+    y = "Exam Z-Score"
+  ) +
+  theme_minimal()
+
+print(p_boxplot)
+
+# Iterate through each class
+for (class_name in valid_classes) {
+  # Get class data
+  class_data <- data.frame(
+    Emotions_4 = data$Emotions_4[data$Class == class_name],
+    z_aveExam = data$z_aveExam[data$Class == class_name]
+  )
+  class_data <- class_data[complete.cases(class_data), ]
+  
+  # Skip if too few observations after removing NAs
+  if (nrow(class_data) < min_class_size) {
+    cat("Skipping class", class_name, "due to insufficient data after removing NAs\n")
+    next
+  }
+  
+  cat("Analyzing class:", class_name, "\n")
+  cat("Sample size:", nrow(class_data), "\n")
+  
+  # Fit linear and quadratic models
+  linear_model <- lm(z_aveExam ~ Emotions_4, data = class_data)
+  quadratic_model <- lm(z_aveExam ~ Emotions_4 + I(Emotions_4^2), data = class_data)
+  
+  # Get linear model stats
+  linear_r2 <- summary(linear_model)$r.squared
+  linear_p <- summary(linear_model)$coefficients[2, 4]
+  linear_aic <- AIC(linear_model)
+  
+  # Get quadratic model stats
+  quad_r2 <- summary(quadratic_model)$r.squared
+  quad_p_linear <- summary(quadratic_model)$coefficients[2, 4]
+  quad_p_squared <- summary(quadratic_model)$coefficients[3, 4]
+  quad_aic <- AIC(quadratic_model)
+  
+  # Determine better model
+  best_model <- ifelse(linear_aic < quad_aic, "Linear", "Quadratic")
+  
+  # Save results
+  result_row <- data.frame(
+    Class = class_name,
+    n = nrow(class_data),
+    Linear_R2 = linear_r2,
+    Linear_p = linear_p,
+    Quadratic_R2 = quad_r2,
+    Quadratic_p_squared = quad_p_squared,
+    Linear_AIC = linear_aic,
+    Quadratic_AIC = quad_aic,
+    Best_Model = best_model,
+    stringsAsFactors = FALSE
+  )
+  
+  results_summary <- rbind(results_summary, result_row)
+  
+  # Create plot for this class
+  p <- ggplot(class_data, aes(x = Emotions_4, y = z_aveExam)) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "blue", se = TRUE) +
+    geom_smooth(method = "lm", formula = y ~ x + I(x^2), color = "red", se = TRUE) +
+    labs(
+      title = paste0("Class: ", class_name),
+      subtitle = paste0("Best model: ", best_model, 
+                       ", Linear R²: ", round(linear_r2, 3),
+                       ", Quadratic R²: ", round(quad_r2, 3)),
+      x = "Anxiety Level (Emotions_4)",
+      y = "Exam Z-Score"
+    ) +
+    theme_minimal()
+  
+  print(p)
+  
+  # Show summary for this class
+  cat("  Linear model R²:", round(linear_r2, 4), "\n")
+  cat("  Linear model p-value:", round(linear_p, 4), "\n")
+  cat("  Linear model AIC:", round(linear_aic, 2), "\n")
+  cat("  Quadratic model R²:", round(quad_r2, 4), "\n")
+  cat("  Quadratic term p-value:", round(quad_p_squared, 4), "\n")
+  cat("  Quadratic model AIC:", round(quad_aic, 2), "\n")
+  cat("  Best model:", best_model, "\n\n")
+}
+
+# Close the PDF
+dev.off()
+
+# Count preferred models
+model_counts <- table(results_summary$Best_Model)
+cat("Model preferences across classes:\n")
+print(model_counts)
+
+# Print final summary table
+write.csv(results_summary, "anxiety_exam_results.csv", row.names = FALSE)
+print(results_summary[, c("Class", "n", "Best_Model", "Linear_R2", "Quadratic_R2")])
+
+# Calculate mean values by anxiety level
+mean_by_anxiety <- aggregate(z_aveExam ~ Emotions_4, data = all_data, 
+                            FUN = function(x) c(mean = mean(x), sd = sd(x), n = length(x)))
+colnames(mean_by_anxiety) <- c("Anxiety_Level", "Stats")
+print("Mean z-scores by anxiety level:")
+anxiety_stats <- data.frame(
+  Anxiety_Level = mean_by_anxiety$Anxiety_Level,
+  Mean_Score = sapply(mean_by_anxiety$Stats, function(x) x[1]),
+  SD = sapply(mean_by_anxiety$Stats, function(x) x[2]),
+  Count = sapply(mean_by_anxiety$Stats, function(x) x[3])
+)
+print(anxiety_stats)
+
+# Analyze the inverted-U relationship if quadratic is best overall
+if (aic_quadratic < aic_linear) {
+  # Calculate vertex (optimal anxiety level)
+  coefs <- coef(overall_quadratic)
+  optimal_anxiety <- -coefs[2] / (2 * coefs[3])
+  
+  cat("Estimated optimal anxiety level (0-7 scale):", round(optimal_anxiety, 2), "\n")
+}
+```
+
+
+```{r}
+# Basic script to statistically compare anxiety distributions between classes
+# Uses simple code with robust error handling to avoid rbind() errors
+
+# Load required packages
+if (!require(car)) {
+  cat("Note: car package not available for Levene's test. Will skip this test.\n")
+}
+
+# Read the data
+data <- read.csv("MASTER_MERGE_new.csv", stringsAsFactors = FALSE)
+
+# Extract just the columns we need
+anxiety_data <- data.frame(
+  Class = data$Class,
+  Anxiety = data$Emotions_4
+)
+
+# Remove rows with NA in either column
+anxiety_data <- anxiety_data[complete.cases(anxiety_data), ]
+cat("Rows after removing NAs:", nrow(anxiety_data), "\n\n")
+
+# Count students per class
+class_sizes <- table(anxiety_data$Class)
+cat("Number of classes in data:", length(class_sizes), "\n")
+
+# Set minimum class size
+min_size <- 30
+valid_classes <- names(class_sizes[class_sizes >= min_size])
+cat("Classes with at least", min_size, "students:", length(valid_classes), "\n\n")
+
+# Filter to classes with sufficient size
+filtered_data <- anxiety_data[anxiety_data$Class %in% valid_classes, ]
+
+# Create output directory if it doesn't exist
+output_dir <- "anxiety_analysis_class_results"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir)
+}
+
+# Calculate summary statistics for each class
+cat("Calculating summary statistics...\n")
+class_stats <- data.frame(
+  Class = character(0),
+  n = integer(0),
+  Mean = numeric(0),
+  Median = numeric(0),
+  SD = numeric(0),
+  Min = numeric(0),
+  Max = numeric(0),
+  stringsAsFactors = FALSE
+)
+
+for (i in 1:length(valid_classes)) {
+  class_name <- valid_classes[i]
+  class_data <- filtered_data$Anxiety[filtered_data$Class == class_name]
+  
+  # Add to data frame manually to avoid rbind errors
+  class_stats[i, "Class"] <- class_name
+  class_stats[i, "n"] <- length(class_data)
+  class_stats[i, "Mean"] <- mean(class_data)
+  class_stats[i, "Median"] <- median(class_data)
+  class_stats[i, "SD"] <- sd(class_data)
+  class_stats[i, "Min"] <- min(class_data)
+  class_stats[i, "Max"] <- max(class_data)
+}
+
+# Sort by mean anxiety
+class_stats <- class_stats[order(class_stats$Mean), ]
+
+# Save to CSV
+write.csv(class_stats, file.path(output_dir, "anxiety_by_class_summary.csv"), row.names = FALSE)
+cat("Saved summary statistics to:", file.path(output_dir, "anxiety_by_class_summary.csv"), "\n\n")
+
+# Create a data frame for test results
+test_results <- data.frame(
+  Test = character(0),
+  Statistic = numeric(0),
+  Parameter = character(0),
+  p_value = numeric(0),
+  Significant = logical(0),
+  stringsAsFactors = FALSE
+)
+
+# 1. ANOVA test
+cat("Running ANOVA test...\n")
+tryCatch({
+  anxiety_anova <- aov(Anxiety ~ Class, data = filtered_data)
+  anova_result <- summary(anxiety_anova)
+  
+  cat("\n----- ANOVA TEST -----\n")
+  cat("Tests if mean anxiety differs significantly between classes\n")
+  print(anova_result)
+  
+  # Add to test results
+  test_results <- rbind(
+    test_results,
+    data.frame(
+      Test = "ANOVA",
+      Statistic = anova_result[[1]]["Class", "F value"],
+      Parameter = paste("df=", anova_result[[1]]["Class", "Df"], ",", anova_result[[1]]["Residuals", "Df"], sep=""),
+      p_value = anova_result[[1]]["Class", "Pr(>F)"],
+      Significant = anova_result[[1]]["Class", "Pr(>F)"] < 0.05,
+      stringsAsFactors = FALSE
+    )
+  )
+}, error = function(e) {
+  cat("Error in ANOVA test:", e$message, "\n")
+})
+
+# 2. Kruskal-Wallis test (non-parametric alternative to ANOVA)
+cat("\nRunning Kruskal-Wallis test...\n")
+tryCatch({
+  kw_test <- kruskal.test(Anxiety ~ Class, data = filtered_data)
+  
+  cat("\n----- KRUSKAL-WALLIS TEST -----\n")
+  cat("Non-parametric test for differences in anxiety distributions\n")
+  print(kw_test)
+  
+  # Add to test results
+  test_results <- rbind(
+    test_results,
+    data.frame(
+      Test = "Kruskal-Wallis",
+      Statistic = kw_test$statistic,
+      Parameter = paste("df=", kw_test$parameter, sep=""),
+      p_value = kw_test$p.value,
+      Significant = kw_test$p.value < 0.05,
+      stringsAsFactors = FALSE
+    )
+  )
+}, error = function(e) {
+  cat("Error in Kruskal-Wallis test:", e$message, "\n")
+})
+
+# 3. Chi-squared test for distribution differences
+cat("\nRunning Chi-squared test...\n")
+tryCatch({
+  # Create contingency table of anxiety levels by class
+  anxiety_table <- table(filtered_data$Class, filtered_data$Anxiety)
+  
+  # Chi-squared test
+  chi_result <- chisq.test(anxiety_table)
+  
+  cat("\n----- CHI-SQUARED TEST -----\n")
+  cat("Tests if anxiety level distributions differ between classes\n")
+  print(chi_result)
+  
+  # Add to test results
+  test_results <- rbind(
+    test_results,
+    data.frame(
+      Test = "Chi-squared",
+      Statistic = chi_result$statistic,
+      Parameter = paste("df=", chi_result$parameter, sep=""),
+      p_value = chi_result$p.value,
+      Significant = chi_result$p.value < 0.05,
+      stringsAsFactors = FALSE
+    )
+  )
+}, error = function(e) {
+  cat("Error in Chi-squared test:", e$message, "\n")
+})
+
+# 4. Levene's test if the car package is available
+if (requireNamespace("car", quietly = TRUE)) {
+  cat("\nRunning Levene's test...\n")
+  tryCatch({
+    # Levene's test
+    levene_result <- car::leveneTest(Anxiety ~ Class, data = filtered_data)
+    
+    cat("\n----- LEVENE'S TEST -----\n")
+    cat("Tests if variance in anxiety differs between classes\n")
+    print(levene_result)
+    
+    # Add to test results
+    test_results <- rbind(
+      test_results,
+      data.frame(
+        Test = "Levene's",
+        Statistic = levene_result[1, "F value"],
+        Parameter = paste("df=", levene_result[1, "Df"], ",", levene_result[2, "Df"], sep=""),
+        p_value = levene_result[1, "Pr(>F)"],
+        Significant = levene_result[1, "Pr(>F)"] < 0.05,
+        stringsAsFactors = FALSE
+      )
+    )
+  }, error = function(e) {
+    cat("Error in Levene's test:", e$message, "\n")
+  })
+}
+
+# Save test results
+write.csv(test_results, file.path(output_dir, "anxiety_statistical_tests.csv"), row.names = FALSE)
+cat("\nSaved statistical test results to:", file.path(output_dir, "anxiety_statistical_tests.csv"), "\n")
+
+# 5. Pairwise comparisons between lowest and highest anxiety classes
+cat("\nRunning pairwise comparisons...\n")
+
+# Get 5 lowest and 5 highest anxiety classes
+low_classes <- head(class_stats$Class, 5)
+high_classes <- tail(class_stats$Class, 5)
+
+# Create a data frame for pairwise test results
+pairwise_results <- data.frame(
+  Class1 = character(0),
+  Class2 = character(0),
+  Test = character(0),
+  Statistic = numeric(0),
+  p_value = numeric(0),
+  Significant = logical(0),
+  stringsAsFactors = FALSE
+)
+
+row_counter <- 1
+for (i in 1:length(low_classes)) {
+  for (j in 1:length(high_classes)) {
+    class1 <- low_classes[i]
+    class2 <- high_classes[j]
+    
+    # Get data for these two classes
+    data1 <- filtered_data$Anxiety[filtered_data$Class == class1]
+    data2 <- filtered_data$Anxiety[filtered_data$Class == class2]
+    
+    # Skip if either class has too few observations
+    if (length(data1) < 5 || length(data2) < 5) {
+      cat("Skipping comparison of", class1, "vs", class2, "(insufficient data)\n")
+      next
+    }
+    
+    # Wilcoxon rank sum test (non-parametric)
+    tryCatch({
+      wilcox_result <- wilcox.test(data1, data2)
+      
+      # Add to pairwise results manually to avoid rbind issues
+      pairwise_results[row_counter, "Class1"] <- class1
+      pairwise_results[row_counter, "Class2"] <- class2
+      pairwise_results[row_counter, "Test"] <- "Wilcoxon"
+      pairwise_results[row_counter, "Statistic"] <- wilcox_result$statistic
+      pairwise_results[row_counter, "p_value"] <- wilcox_result$p.value
+      pairwise_results[row_counter, "Significant"] <- wilcox_result$p.value < 0.05
+      
+      row_counter <- row_counter + 1
+      
+      # T-test (parametric)
+      t_result <- t.test(data1, data2)
+      
+      # Add to pairwise results
+      pairwise_results[row_counter, "Class1"] <- class1
+      pairwise_results[row_counter, "Class2"] <- class2
+      pairwise_results[row_counter, "Test"] <- "T-test"
+      pairwise_results[row_counter, "Statistic"] <- t_result$statistic
+      pairwise_results[row_counter, "p_value"] <- t_result$p.value
+      pairwise_results[row_counter, "Significant"] <- t_result$p.value < 0.05
+      
+      row_counter <- row_counter + 1
+      
+      # Print results
+      cat("\nComparing", class1, "vs", class2, ":\n")
+      cat("  Wilcoxon p-value:", round(wilcox_result$p.value, 4), 
+          ifelse(wilcox_result$p.value < 0.05, "(Significant)", "(Not significant)"), "\n")
+      cat("  T-test p-value:", round(t_result$p.value, 4), 
+          ifelse(t_result$p.value < 0.05, "(Significant)", "(Not significant)"), "\n")
+    }, error = function(e) {
+      cat("Error in comparison of", class1, "vs", class2, ":", e$message, "\n")
+    })
+  }
+}
+
+# Save pairwise results
+write.csv(pairwise_results, file.path(output_dir, "anxiety_pairwise_tests.csv"), row.names = FALSE)
+cat("\nSaved pairwise comparison results to:", file.path(output_dir, "anxiety_pairwise_tests.csv"), "\n")
+
+# Try to create simple PDF with histograms if ggplot2 is available
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  cat("\nCreating visualizations...\n")
+  tryCatch({
+    library(ggplot2)
+    
+    pdf(file.path(output_dir, "anxiety_histograms_by_class.pdf"), width = 12, height = 10)
+    
+    # Create histograms for all classes (arrange in a grid)
+    classes_to_plot <- valid_classes
+    
+    # If there are too many classes, just plot the 5 lowest and 5 highest
+    if (length(classes_to_plot) > 15) {
+      classes_to_plot <- c(low_classes, high_classes)
+      cat("Too many classes to plot all. Only plotting 5 lowest and 5 highest anxiety classes.\n")
+    }
+    
+    # Set up the plotting grid
+    par(mfrow = c(3, 3))
+    
+    # Plot histograms
+    for (class_name in classes_to_plot) {
+      class_data <- filtered_data$Anxiety[filtered_data$Class == class_name]
+      class_info <- class_stats[class_stats$Class == class_name, ]
+      
+      hist(class_data, 
+           main = paste0(substr(class_name, 1, 20), 
+                        "\nMean: ", round(class_info$Mean, 2),
+                        ", SD: ", round(class_info$SD, 2)),
+           xlab = "Anxiety Level",
+           breaks = 7,
+           col = "lightblue",
+           xlim = c(min(filtered_data$Anxiety), max(filtered_data$Anxiety)))
+      
+      # Add line for mean
+      abline(v = class_info$Mean, col = "red", lwd = 2)
+    }
+    
+    # Reset plot parameters
+    par(mfrow = c(1, 1))
+    
+    # Create comparison boxplot
+    if (length(classes_to_plot) <= 15) {
+      boxplot_data <- filtered_data[filtered_data$Class %in% classes_to_plot, ]
+      boxplot(Anxiety ~ Class, data = boxplot_data,
+              main = "Anxiety Level Comparison by Class",
+              xlab = "Class",
+              ylab = "Anxiety Level",
+              col = "lightblue",
+              las = 2)  # Rotate labels
+    }
+    
+    dev.off()
+    cat("Created visualizations in:", file.path(output_dir, "anxiety_histograms_by_class.pdf"), "\n")
+  }, error = function(e) {
+    cat("Error creating visualizations:", e$message, "\n")
+  })
+}
+
+# Print interpretation
+cat("\n\n----- INTERPRETATION OF RESULTS -----\n\n")
+
+# Interpret the overall tests
+if (nrow(test_results) > 0) {
+  cat("Overall Statistical Tests:\n")
+  for (i in 1:nrow(test_results)) {
+    test_name <- test_results$Test[i]
+    p_val <- test_results$p_value[i]
+    sig <- test_results$Significant[i]
+    
+    if (sig) {
+      cat("- ", test_name, " Test: p = ", round(p_val, 4), 
+          " - SIGNIFICANT difference in anxiety levels between classes\n", sep="")
+    } else {
+      cat("- ", test_name, " Test: p = ", round(p_val, 4), 
+          " - No significant difference detected\n", sep="")
+    }
+  }
+}
+
+# Interpret pairwise comparisons
+if (nrow(pairwise_results) > 0) {
+  # Count significant differences
+  wilcox_tests <- pairwise_results[pairwise_results$Test == "Wilcoxon", ]
+  sig_wilcox <- sum(wilcox_tests$Significant)
+  
+  t_tests <- pairwise_results[pairwise_results$Test == "T-test", ]
+  sig_t <- sum(t_tests$Significant)
+  
+  cat("\nPairwise Comparisons (lowest vs. highest anxiety classes):\n")
+  cat("- Wilcoxon tests: ", sig_wilcox, " out of ", nrow(wilcox_tests), 
+      " comparisons showed significant differences\n", sep="")
+  cat("- T-tests: ", sig_t, " out of ", nrow(t_tests), 
+      " comparisons showed significant differences\n", sep="")
+}
+
+cat("\nAnalysis complete! All results saved to the '", output_dir, "' directory.\n", sep="")
+```
+

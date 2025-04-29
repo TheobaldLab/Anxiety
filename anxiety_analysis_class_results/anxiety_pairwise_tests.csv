@@ -1,0 +1,51 @@
+"Class1","Class2","Test","Statistic","p_value","Significant"
+"Lo Fall 2023","Adelman Fall 2023","Wilcoxon",7574,6.3341204429703e-11,TRUE
+"Lo Fall 2023","Adelman Fall 2023","T-test",-6.68285293944099,4.31342962201615e-10,TRUE
+"Lo Fall 2023","Pollet Fall 2023","Wilcoxon",9240,2.37449699324106e-14,TRUE
+"Lo Fall 2023","Pollet Fall 2023","T-test",-8.06548705801962,3.85806308375637e-14,TRUE
+"Lo Fall 2023","Sharpe Elles135 Fall 2023","Wilcoxon",14876.5,1.64746861309563e-20,TRUE
+"Lo Fall 2023","Sharpe Elles135 Fall 2023","T-test",-9.90984702492407,4.76576825335654e-21,TRUE
+"Lo Fall 2023","Craig Winter 2023","Wilcoxon",17335,8.46521542383053e-23,TRUE
+"Lo Fall 2023","Craig Winter 2023","T-test",-10.7116676017794,2.95019682204424e-24,TRUE
+"Lo Fall 2023","Gottfried Fall 2023","Wilcoxon",15353.5,1.68355223845549e-24,TRUE
+"Lo Fall 2023","Gottfried Fall 2023","T-test",-11.2045515907543,4.39513519909833e-26,TRUE
+"Chang Spring 2024","Adelman Fall 2023","Wilcoxon",1208,7.42654518024712e-05,TRUE
+"Chang Spring 2024","Adelman Fall 2023","T-test",-4.51185345038138,1.68778768379691e-05,TRUE
+"Chang Spring 2024","Pollet Fall 2023","Wilcoxon",1479,1.06157612268094e-05,TRUE
+"Chang Spring 2024","Pollet Fall 2023","T-test",-4.99069042759035,3.17003876905239e-06,TRUE
+"Chang Spring 2024","Sharpe Elles135 Fall 2023","Wilcoxon",2366.5,9.87757951326957e-07,TRUE
+"Chang Spring 2024","Sharpe Elles135 Fall 2023","T-test",-5.53675124949652,5.70412280684907e-07,TRUE
+"Chang Spring 2024","Craig Winter 2023","Wilcoxon",2762,5.43902927176626e-07,TRUE
+"Chang Spring 2024","Craig Winter 2023","T-test",-5.96803027301815,1.09869069890811e-07,TRUE
+"Chang Spring 2024","Gottfried Fall 2023","Wilcoxon",2439.5,1.0893061963472e-07,TRUE
+"Chang Spring 2024","Gottfried Fall 2023","T-test",-6.18566304558014,5.04088293100905e-08,TRUE
+"Rios Fall 2023","Adelman Fall 2023","Wilcoxon",1250,0.00124367803057859,TRUE
+"Rios Fall 2023","Adelman Fall 2023","T-test",-3.49459799463141,0.00079446800857168,TRUE
+"Rios Fall 2023","Pollet Fall 2023","Wilcoxon",1560,0.000401722244802555,TRUE
+"Rios Fall 2023","Pollet Fall 2023","T-test",-3.7650858314316,0.000371880809248562,TRUE
+"Rios Fall 2023","Sharpe Elles135 Fall 2023","Wilcoxon",2543,0.000104315843251346,TRUE
+"Rios Fall 2023","Sharpe Elles135 Fall 2023","T-test",-4.0836631378088,0.000154839308636904,TRUE
+"Rios Fall 2023","Craig Winter 2023","Wilcoxon",2907.5,3.74325931138862e-05,TRUE
+"Rios Fall 2023","Craig Winter 2023","T-test",-4.42217195431677,5.15537683455413e-05,TRUE
+"Rios Fall 2023","Gottfried Fall 2023","Wilcoxon",2638.5,1.7464454332085e-05,TRUE
+"Rios Fall 2023","Gottfried Fall 2023","T-test",-4.58433331442794,3.06973677872671e-05,TRUE
+"Herron Spring 2022","Adelman Fall 2023","Wilcoxon",10004.5,3.7588103668484e-06,TRUE
+"Herron Spring 2022","Adelman Fall 2023","T-test",-4.49535869785134,1.34946772346838e-05,TRUE
+"Herron Spring 2022","Pollet Fall 2023","Wilcoxon",12510,6.96100596492727e-08,TRUE
+"Herron Spring 2022","Pollet Fall 2023","T-test",-5.42021771166636,1.42840899173355e-07,TRUE
+"Herron Spring 2022","Sharpe Elles135 Fall 2023","Wilcoxon",20305.5,2.17824366888075e-11,TRUE
+"Herron Spring 2022","Sharpe Elles135 Fall 2023","T-test",-6.69310460715229,6.29722702624699e-11,TRUE
+"Herron Spring 2022","Craig Winter 2023","Wilcoxon",23506,3.6336694287429e-13,TRUE
+"Herron Spring 2022","Craig Winter 2023","T-test",-7.42988881442386,4.43866914028823e-13,TRUE
+"Herron Spring 2022","Gottfried Fall 2023","Wilcoxon",21204.5,2.62260361669394e-14,TRUE
+"Herron Spring 2022","Gottfried Fall 2023","T-test",-7.84928233891022,2.48813361414464e-14,TRUE
+"Burger-Dunn Fall 2023","Adelman Fall 2023","Wilcoxon",12953.5,5.44066342377114e-05,TRUE
+"Burger-Dunn Fall 2023","Adelman Fall 2023","T-test",-4.03826560789936,8.59765509899084e-05,TRUE
+"Burger-Dunn Fall 2023","Pollet Fall 2023","Wilcoxon",16351.5,2.88134043230872e-06,TRUE
+"Burger-Dunn Fall 2023","Pollet Fall 2023","T-test",-4.90473646314449,1.75802694326811e-06,TRUE
+"Burger-Dunn Fall 2023","Sharpe Elles135 Fall 2023","Wilcoxon",26726,4.49391118816154e-09,TRUE
+"Burger-Dunn Fall 2023","Sharpe Elles135 Fall 2023","T-test",-6.13562438649406,1.79983748912645e-09,TRUE
+"Burger-Dunn Fall 2023","Craig Winter 2023","Wilcoxon",30614,3.50137757784599e-11,TRUE
+"Burger-Dunn Fall 2023","Craig Winter 2023","T-test",-6.88872323073427,1.56331077990818e-11,TRUE
+"Burger-Dunn Fall 2023","Gottfried Fall 2023","Wilcoxon",27945.5,7.37160830202422e-12,TRUE
+"Burger-Dunn Fall 2023","Gottfried Fall 2023","T-test",-7.31485968390298,9.62317960069587e-13,TRUE

@@ -5,26 +5,1112 @@ date: "2025-04-25"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+library(forcats)
+library(tidyr)
+
+# Source the IdenGroups.R file
+source("IdenGroups.R")
+
+# Read your data
+data <- read.csv("MASTER_MERGE_new.csv")
+
+# Add demographic variables
+data <- add.All(data)
+
+# Filter to non-missing anxiety values
+analysis_data <- data %>%
+  filter(!is.na(Emotions_4))
+
+# Create binary high anxiety variable
+analysis_data$high_anxiety <- ifelse(analysis_data$Emotions_4 >= 4, TRUE, FALSE)
+
+# Analyze race and gender intersection
+# Filter to valid values for both demographics
+race_gender_data <- analysis_data %>%
+  filter(!is.na(race_cat) & !is.na(gender_cat))
+
+# Create intersection variable
+race_gender_data$intersection <- paste(race_gender_data$race_cat, race_gender_data$gender_cat, sep = " × ")
+
+# Calculate anxiety statistics by intersection
+race_gender_stats <- race_gender_data %>%
+  group_by(intersection, race_cat, gender_cat) %>%
+  summarize(
+    n = n(),
+    mean_anxiety = mean(Emotions_4, na.rm = TRUE),
+    se_anxiety = sd(Emotions_4, na.rm = TRUE) / sqrt(n),
+    pct_high_anxiety = mean(high_anxiety, na.rm = TRUE) * 100,
+    se_pct = sqrt((pct_high_anxiety/100 * (1-pct_high_anxiety/100)) / n) * 100,
+    .groups = "drop"
+  ) %>%
+  # Only include groups with sufficient sample size
+  filter(n >= 10)
+
+# Order by mean anxiety
+race_gender_stats$intersection <- fct_reorder(race_gender_stats$intersection, race_gender_stats$mean_anxiety)
+
+# Create bar chart for mean anxiety by intersection
+p1 <- ggplot(race_gender_stats, aes(x = intersection, y = mean_anxiety, fill = race_cat)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = mean_anxiety - se_anxiety, 
+                    ymax = mean_anxiety + se_anxiety), width = 0.2) +
+  geom_text(aes(label = sprintf("n=%d", n)), vjust = -0.5, size = 3) +
+  labs(
+    title = "Mean Anxiety by Race × Gender Intersection",
+    subtitle = "Error bars represent standard error. Only groups with n≥10 shown.",
+    x = "",
+    y = "Mean Anxiety Level (Emotions_4)",
+    fill = "Race Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylim(0, max(race_gender_stats$mean_anxiety + race_gender_stats$se_anxiety) * 1.1)
+
+# Create bar chart for percentage with high anxiety by intersection
+p2 <- ggplot(race_gender_stats, aes(x = intersection, y = pct_high_anxiety, fill = race_cat)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = pct_high_anxiety - se_pct, 
+                    ymax = pct_high_anxiety + se_pct), width = 0.2) +
+  geom_text(aes(label = sprintf("%.1f%%", pct_high_anxiety)), vjust = -0.5, size = 3) +
+  labs(
+    title = "Percentage with High Anxiety by Race × Gender Intersection",
+    subtitle = "High anxiety defined as 4-5 on scale. Error bars represent standard error.",
+    x = "",
+    y = "Percentage with High Anxiety",
+    fill = "Race Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylim(0, max(race_gender_stats$pct_high_anxiety + race_gender_stats$se_pct) * 1.1)
+
+# Print the plots
+print(p1)
+print(p2)
+
+# Create heatmap visualization for intersectional patterns
+heatmap_data <- race_gender_stats %>%
+  select(race_cat, gender_cat, mean_anxiety, pct_high_anxiety, n) %>%
+  mutate(label = sprintf("%.2f\n(n=%d)", mean_anxiety, n))
+
+# Mean anxiety heatmap
+p3 <- ggplot(heatmap_data, aes(x = gender_cat, y = race_cat, fill = mean_anxiety)) +
+  geom_tile() +
+  geom_text(aes(label = label), color = "white", size = 3) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(
+    title = "Mean Anxiety Levels by Race and Gender",
+    x = "Gender",
+    y = "Race",
+    fill = "Mean Anxiety"
+  ) +
+  theme_minimal()
+
+print(p3)
+
+# Statistical test for interaction effects
+# Create linear model with interaction
+interaction_model <- lm(Emotions_4 ~ race_cat * gender_cat, data = race_gender_data)
+anova_results <- anova(interaction_model)
+print("ANOVA Results for Race × Gender Interaction:")
+print(anova_results)
+
+# Now analyze Race × FirstGen intersection
+# Filter to valid values for both demographics
+race_firstgen_data <- analysis_data %>%
+  filter(!is.na(race_cat) & !is.na(FirstGen))
+
+# Create intersection variable
+race_firstgen_data$intersection <- paste(race_firstgen_data$race_cat, race_firstgen_data$FirstGen, sep = " × ")
+
+# Calculate anxiety statistics by intersection
+race_firstgen_stats <- race_firstgen_data %>%
+  group_by(intersection, race_cat, FirstGen) %>%
+  summarize(
+    n = n(),
+    mean_anxiety = mean(Emotions_4, na.rm = TRUE),
+    se_anxiety = sd(Emotions_4, na.rm = TRUE) / sqrt(n),
+    pct_high_anxiety = mean(high_anxiety, na.rm = TRUE) * 100,
+    se_pct = sqrt((pct_high_anxiety/100 * (1-pct_high_anxiety/100)) / n) * 100,
+    .groups = "drop"
+  ) %>%
+  # Only include groups with sufficient sample size
+  filter(n >= 10)
+
+# Order by mean anxiety
+race_firstgen_stats$intersection <- fct_reorder(race_firstgen_stats$intersection, race_firstgen_stats$mean_anxiety)
+
+# Create bar chart for mean anxiety by intersection
+p4 <- ggplot(race_firstgen_stats, aes(x = intersection, y = mean_anxiety, fill = race_cat)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = mean_anxiety - se_anxiety, 
+                    ymax = mean_anxiety + se_anxiety), width = 0.2) +
+  geom_text(aes(label = sprintf("n=%d", n)), vjust = -0.5, size = 3) +
+  labs(
+    title = "Mean Anxiety by Race × First-Generation Status Intersection",
+    subtitle = "Error bars represent standard error. Only groups with n≥10 shown.",
+    x = "",
+    y = "Mean Anxiety Level (Emotions_4)",
+    fill = "Race Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylim(0, max(race_firstgen_stats$mean_anxiety + race_firstgen_stats$se_anxiety) * 1.1)
+
+# Print the plot
+print(p4)
+
+# Check all three-way intersections if sample sizes permit
+three_way_data <- analysis_data %>%
+  filter(!is.na(race_cat) & !is.na(gender_cat) & !is.na(FirstGen))
+
+# Create three-way intersection variable
+three_way_data$intersection <- paste(three_way_data$race_cat, three_way_data$gender_cat, 
+                                    three_way_data$FirstGen, sep = " × ")
+
+# Calculate anxiety statistics by three-way intersection
+three_way_stats <- three_way_data %>%
+  group_by(intersection, race_cat, gender_cat, FirstGen) %>%
+  summarize(
+    n = n(),
+    mean_anxiety = mean(Emotions_4, na.rm = TRUE),
+    se_anxiety = sd(Emotions_4, na.rm = TRUE) / sqrt(n),
+    pct_high_anxiety = mean(high_anxiety, na.rm = TRUE) * 100,
+    se_pct = sqrt((pct_high_anxiety/100 * (1-pct_high_anxiety/100)) / n) * 100,
+    .groups = "drop"
+  ) %>%
+  # Only include groups with sufficient sample size
+  filter(n >= 10) %>%
+  # Order by mean anxiety
+  arrange(desc(mean_anxiety))
+
+# Print the top and bottom 5 groups by anxiety level
+cat("\nTop 5 groups with highest anxiety:\n")
+print(head(three_way_stats, 5))
+
+cat("\nBottom 5 groups with lowest anxiety:\n")
+print(tail(three_way_stats, 5))
+
+# Create a plot of the top and bottom 5 groups
+top_bottom_groups <- rbind(
+  head(three_way_stats, 5) %>% mutate(group_type = "Highest Anxiety"),
+  tail(three_way_stats, 5) %>% mutate(group_type = "Lowest Anxiety")
+)
+
+# Create intersection label with anxiety level
+top_bottom_groups$intersection_label <- paste0(
+  top_bottom_groups$intersection, "\n", 
+  sprintf("Anxiety: %.2f", top_bottom_groups$mean_anxiety)
+)
+
+# Reorder for plotting
+top_bottom_groups$intersection_label <- fct_reorder(
+  top_bottom_groups$intersection_label, 
+  top_bottom_groups$mean_anxiety
+)
+
+# Create comparison plot
+p5 <- ggplot(top_bottom_groups, aes(x = intersection_label, y = mean_anxiety, fill = group_type)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = mean_anxiety - se_anxiety, 
+                    ymax = mean_anxiety + se_anxiety), width = 0.2) +
+  geom_text(aes(label = sprintf("n=%d", n)), vjust = -0.5, size = 3) +
+  labs(
+    title = "Groups with Highest and Lowest Anxiety Levels",
+    subtitle = "Intersections of Race × Gender × First-Generation Status",
+    x = "",
+    y = "Mean Anxiety Level (Emotions_4)",
+    fill = ""
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip() +
+  scale_fill_manual(values = c("Highest Anxiety" = "red", "Lowest Anxiety" = "blue"))
+
+print(p5)
+```
+```{r}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+library(forcats)
+library(emmeans)   # For estimated marginal means and pairwise comparisons
+
+# Read your data
+data <- read.csv("MASTER_MERGE_new.csv")
+
+# Add demographic variables
+data <- add.All(data)
+
+# Filter to non-missing anxiety values
+analysis_data <- data %>%
+  filter(!is.na(Emotions_4))
+
+# 1. Test for individual demographic variables
+# ============================================
+
+# Function to perform ANOVA and pairwise comparisons for a demographic variable
+test_group_differences <- function(data, demo_var) {
+  # Skip if variable doesn't exist
+  if (!demo_var %in% names(data)) {
+    warning(paste0("Variable ", demo_var, " not found in data"))
+    return(NULL)
+  }
+  
+  # Filter to non-missing values for this demographic
+  demo_data <- data %>%
+    filter(!is.na(get(demo_var)))
+  
+  # Create formula for ANOVA
+  formula <- as.formula(paste0("Emotions_4 ~ ", demo_var))
+  
+  # Fit ANOVA model
+  anova_model <- aov(formula, data = demo_data)
+  
+  # Get ANOVA results
+  anova_results <- summary(anova_model)
+  
+  # Use emmeans for pairwise comparisons
+  emm <- emmeans(anova_model, specs = demo_var)
+  pairwise_results <- pairs(emm, adjust = "tukey")
+  
+  # Get group means with confidence intervals
+  group_means <- demo_data %>%
+    group_by(across(all_of(demo_var))) %>%
+    summarize(
+      n = n(),
+      mean = mean(Emotions_4, na.rm = TRUE),
+      sd = sd(Emotions_4, na.rm = TRUE),
+      se = sd / sqrt(n),
+      ci_lower = mean - 1.96 * se,
+      ci_upper = mean + 1.96 * se,
+      .groups = "drop"
+    )
+  
+  # Rename the grouping variable column to "Group"
+  names(group_means)[1] <- "Group"
+  
+  # Reorder by mean anxiety
+  group_means$Group <- fct_reorder(group_means$Group, group_means$mean)
+  
+  # Create significance annotation dataframe
+  sig_pairs <- as.data.frame(summary(pairwise_results))
+  sig_pairs$significant <- sig_pairs$p.value < 0.05
+  
+  # Create bar chart with error bars
+  p <- ggplot(group_means, aes(x = Group, y = mean, fill = Group)) +
+    geom_bar(stat = "identity") +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+    geom_text(aes(label = sprintf("n=%d", n)), vjust = -0.5) +
+    labs(
+      title = paste0("Mean Anxiety by ", demo_var),
+      subtitle = paste0("ANOVA p-value: ", format.pval(anova_results[[1]]$`Pr(>F)`[1], digits = 3)),
+      x = demo_var,
+      y = "Mean Anxiety Level (Emotions_4)"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "none"
+    ) +
+    ylim(0, max(group_means$ci_upper) * 1.1) # Add space for labels
+  
+  # Return results and plot
+  return(list(
+    anova = anova_results,
+    pairwise = pairwise_results,
+    plot = p,
+    means = group_means,
+    sig_pairs = sig_pairs
+  ))
+}
+
+# Test differences for each demographic variable
+demographic_vars <- c("race_cat", "gender_cat", "FirstGen")
+test_results <- list()
+
+for (demo_var in demographic_vars) {
+  cat("\n\n===============================================\n")
+  cat("STATISTICAL TESTS FOR", demo_var, "\n")
+  cat("===============================================\n")
+  
+  test_results[[demo_var]] <- test_group_differences(analysis_data, demo_var)
+  
+  if (!is.null(test_results[[demo_var]])) {
+    # Print ANOVA results
+    cat("\nANOVA Results:\n")
+    print(test_results[[demo_var]]$anova)
+    
+    # Print pairwise comparison results
+    cat("\nPairwise Comparisons (Tukey adjustment):\n")
+    print(test_results[[demo_var]]$pairwise)
+    
+    # Print significant pairs only
+    cat("\nSignificant Differences (p < 0.05):\n")
+    sig_pairs <- test_results[[demo_var]]$sig_pairs
+    print(sig_pairs[sig_pairs$significant, ])
+    
+    # Print plot
+    print(test_results[[demo_var]]$plot)
+  }
+}
+
+# 2. Test for intersectional effects
+# ==================================
+
+# Race × Gender intersection
+# Filter to valid values for both demographics
+race_gender_data <- analysis_data %>%
+  filter(!is.na(race_cat) & !is.na(gender_cat))
+
+# Create intersection variable
+race_gender_data$intersection <- paste(race_gender_data$race_cat, race_gender_data$gender_cat, sep = " × ")
+
+# Check number of observations per group
+group_counts <- table(race_gender_data$intersection)
+valid_groups <- names(group_counts[group_counts >= 10])
+
+# Filter to groups with sufficient observations
+race_gender_filtered <- race_gender_data %>%
+  filter(intersection %in% valid_groups)
+
+# Fit ANOVA model for intersection
+rg_model <- aov(Emotions_4 ~ intersection, data = race_gender_filtered)
+rg_anova <- summary(rg_model)
+
+# Use emmeans for pairwise comparisons
+rg_emm <- emmeans(rg_model, specs = "intersection")
+rg_pairwise <- pairs(rg_emm, adjust = "tukey")
+rg_pairwise_df <- as.data.frame(summary(rg_pairwise))
+
+# Get significant pairs only
+rg_sig_pairs <- rg_pairwise_df[rg_pairwise_df$p.value < 0.05, ]
+
+# Get group means with confidence intervals
+rg_means <- race_gender_filtered %>%
+  group_by(intersection) %>%
+  summarize(
+    n = n(),
+    mean = mean(Emotions_4, na.rm = TRUE),
+    sd = sd(Emotions_4, na.rm = TRUE),
+    se = sd / sqrt(n),
+    ci_lower = mean - 1.96 * se,
+    ci_upper = mean + 1.96 * se,
+    .groups = "drop"
+  )
+
+# Reorder by mean anxiety
+rg_means$intersection <- fct_reorder(rg_means$intersection, rg_means$mean)
+
+# Create bar chart with error bars
+rg_plot <- ggplot(rg_means, aes(x = intersection, y = mean, fill = intersection)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+  geom_text(aes(label = sprintf("n=%d", n)), vjust = -0.5, size = 3) +
+  labs(
+    title = "Mean Anxiety by Race × Gender Intersection",
+    subtitle = paste0("ANOVA p-value: ", format.pval(rg_anova[[1]]$`Pr(>F)`[1], digits = 3)),
+    x = "",
+    y = "Mean Anxiety Level (Emotions_4)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  ) +
+  ylim(0, max(rg_means$ci_upper) * 1.1)
+
+# Print results
+cat("\n\n===============================================\n")
+cat("STATISTICAL TESTS FOR Race × Gender Intersection\n")
+cat("===============================================\n")
+
+cat("\nANOVA Results:\n")
+print(rg_anova)
+
+cat("\nPairwise Comparisons (showing only significant differences p<0.05):\n")
+print(rg_sig_pairs)
+
+# Print plot
+print(rg_plot)
+
+# 3. Race × FirstGen intersection
+# =======================================================
+# Filter to valid values for both demographics
+race_firstgen_data <- analysis_data %>%
+  filter(!is.na(race_cat) & !is.na(FirstGen))
+
+# Create intersection variable
+race_firstgen_data$intersection <- paste(race_firstgen_data$race_cat, race_firstgen_data$FirstGen, sep = " × ")
+
+# Check number of observations per group
+rf_group_counts <- table(race_firstgen_data$intersection)
+rf_valid_groups <- names(rf_group_counts[rf_group_counts >= 10])
+
+# Filter to groups with sufficient observations
+race_firstgen_filtered <- race_firstgen_data %>%
+  filter(intersection %in% rf_valid_groups)
+
+# Fit ANOVA model for intersection
+rf_model <- aov(Emotions_4 ~ intersection, data = race_firstgen_filtered)
+rf_anova <- summary(rf_model)
+
+# Use emmeans for pairwise comparisons
+rf_emm <- emmeans(rf_model, specs = "intersection")
+rf_pairwise <- pairs(rf_emm, adjust = "tukey")
+rf_pairwise_df <- as.data.frame(summary(rf_pairwise))
+
+# Get significant pairs only
+rf_sig_pairs <- rf_pairwise_df[rf_pairwise_df$p.value < 0.05, ]
+
+# Get group means with confidence intervals
+rf_means <- race_firstgen_filtered %>%
+  group_by(intersection) %>%
+  summarize(
+    n = n(),
+    mean = mean(Emotions_4, na.rm = TRUE),
+    sd = sd(Emotions_4, na.rm = TRUE),
+    se = sd / sqrt(n),
+    ci_lower = mean - 1.96 * se,
+    ci_upper = mean + 1.96 * se,
+    .groups = "drop"
+  )
+
+# Reorder by mean anxiety
+rf_means$intersection <- fct_reorder(rf_means$intersection, rf_means$mean)
+
+# Create bar chart with error bars
+rf_plot <- ggplot(rf_means, aes(x = intersection, y = mean, fill = intersection)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+  geom_text(aes(label = sprintf("n=%d", n)), vjust = -0.5, size = 3) +
+  labs(
+    title = "Mean Anxiety by Race × First-Generation Status Intersection",
+    subtitle = paste0("ANOVA p-value: ", format.pval(rf_anova[[1]]$`Pr(>F)`[1], digits = 3)),
+    x = "",
+    y = "Mean Anxiety Level (Emotions_4)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  ) +
+  ylim(0, max(rf_means$ci_upper) * 1.1)
+
+# Print results
+cat("\n\n===============================================\n")
+cat("STATISTICAL TESTS FOR Race × FirstGen Intersection\n")
+cat("===============================================\n")
+
+cat("\nANOVA Results:\n")
+print(rf_anova)
+
+cat("\nPairwise Comparisons (showing only significant differences p<0.05):\n")
+print(rf_sig_pairs)
+
+# Print plot
+print(rf_plot)
+
+# 4. Create a visual matrix showing significant differences
+# ========================================================
+# This creates a visualization showing which groups differ significantly
+
+# Function to create significance matrix visualization
+create_significance_matrix <- function(pairwise_df, group_means) {
+  # Create matrix of all combinations
+  groups <- group_means$Group
+  n_groups <- length(groups)
+  sig_matrix <- matrix(NA, nrow = n_groups, ncol = n_groups)
+  rownames(sig_matrix) <- groups
+  colnames(sig_matrix) <- groups
+  
+  # Fill with p-values
+  for (i in 1:nrow(pairwise_df)) {
+    pair <- strsplit(as.character(pairwise_df$contrast[i]), " - ")[[1]]
+    g1 <- pair[1]
+    g2 <- pair[2]
+    
+    # Find indices in the matrix
+    row_idx <- which(rownames(sig_matrix) == g1)
+    col_idx <- which(colnames(sig_matrix) == g2)
+    
+    if (length(row_idx) > 0 && length(col_idx) > 0) {
+      sig_matrix[row_idx, col_idx] <- pairwise_df$p.value[i]
+      # Mirror p-values
+      sig_matrix[col_idx, row_idx] <- pairwise_df$p.value[i]
+    }
+  }
+  
+  # Convert to data frame for plotting
+  sig_df <- expand.grid(Group1 = groups, Group2 = groups)
+  sig_df$p.value <- NA
+  for (i in 1:nrow(sig_df)) {
+    g1 <- as.character(sig_df$Group1[i])
+    g2 <- as.character(sig_df$Group2[i])
+    sig_df$p.value[i] <- sig_matrix[g1, g2]
+  }
+  
+  # Add significance indicator
+  sig_df$significant <- sig_df$p.value < 0.05
+  sig_df$label <- ifelse(sig_df$p.value < 0.001, "***",
+                        ifelse(sig_df$p.value < 0.01, "**",
+                              ifelse(sig_df$p.value < 0.05, "*", "")))
+  
+  # Create heatmap
+  p <- ggplot(sig_df, aes(x = Group1, y = Group2, fill = p.value)) +
+    geom_tile() +
+    geom_text(aes(label = label), color = "black") +
+    scale_fill_gradient2(low = "blue", high = "white", 
+                        mid = "lightblue", midpoint = 0.5,
+                        na.value = "gray90",
+                        limits = c(0, 1)) +
+    labs(
+      title = "Matrix of Significant Differences in Anxiety Levels",
+      subtitle = "* p<0.05, ** p<0.01, *** p<0.001",
+      x = "",
+      y = "",
+      fill = "p-value"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      panel.grid = element_blank()
+    )
+  
+  return(p)
+}
+
+# Create significance matrices for each set of comparisons
+if (!is.null(test_results[["race_cat"]])) {
+  race_matrix <- create_significance_matrix(
+    test_results[["race_cat"]]$sig_pairs,
+    test_results[["race_cat"]]$means
+  )
+  print(race_matrix)
+}
+
+if (!is.null(test_results[["gender_cat"]])) {
+  gender_matrix <- create_significance_matrix(
+    test_results[["gender_cat"]]$sig_pairs,
+    test_results[["gender_cat"]]$means
+  )
+  print(gender_matrix)
+}
+
+# For intersections, we need to modify the function slightly
+create_intersection_matrix <- function(pairwise_df, group_means) {
+  # Extract groups from means
+  groups <- group_means$intersection
+  n_groups <- length(groups)
+  sig_matrix <- matrix(NA, nrow = n_groups, ncol = n_groups)
+  rownames(sig_matrix) <- groups
+  colnames(sig_matrix) <- groups
+  
+  # Fill with p-values
+  for (i in 1:nrow(pairwise_df)) {
+    pair <- strsplit(as.character(pairwise_df$contrast[i]), " - ")[[1]]
+    g1 <- pair[1]
+    g2 <- pair[2]
+    
+    # Find indices in the matrix
+    row_idx <- which(rownames(sig_matrix) == g1)
+    col_idx <- which(colnames(sig_matrix) == g2)
+    
+    if (length(row_idx) > 0 && length(col_idx) > 0) {
+      sig_matrix[row_idx, col_idx] <- pairwise_df$p.value[i]
+      # Mirror p-values
+      sig_matrix[col_idx, row_idx] <- pairwise_df$p.value[i]
+    }
+  }
+  
+  # Convert to data frame for plotting
+  sig_df <- expand.grid(Group1 = groups, Group2 = groups)
+  sig_df$p.value <- NA
+  for (i in 1:nrow(sig_df)) {
+    g1 <- as.character(sig_df$Group1[i])
+    g2 <- as.character(sig_df$Group2[i])
+    sig_df$p.value[i] <- sig_matrix[g1, g2]
+  }
+  
+  # Add significance indicator
+  sig_df$significant <- sig_df$p.value < 0.05
+  sig_df$label <- ifelse(sig_df$p.value < 0.001, "***",
+                        ifelse(sig_df$p.value < 0.01, "**",
+                              ifelse(sig_df$p.value < 0.05, "*", "")))
+  
+  # Create heatmap
+  p <- ggplot(sig_df, aes(x = Group1, y = Group2, fill = p.value)) +
+    geom_tile() +
+    geom_text(aes(label = label), color = "black", size = 2.5) +
+    scale_fill_gradient2(low = "blue", high = "white", 
+                        mid = "lightblue", midpoint = 0.5,
+                        na.value = "gray90",
+                        limits = c(0, 1)) +
+    labs(
+      title = "Matrix of Significant Differences in Anxiety Levels",
+      subtitle = "* p<0.05, ** p<0.01, *** p<0.001",
+      x = "",
+      y = "",
+      fill = "p-value"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1, size = 8),
+      axis.text.y = element_text(size = 8),
+      panel.grid = element_blank()
+    )
+  
+  return(p)
+}
+
+# Create significance matrices for intersections
+if (nrow(rg_sig_pairs) > 0) {
+  rg_matrix <- create_intersection_matrix(rg_pairwise_df, rg_means)
+  print(rg_matrix)
+}
+
+if (nrow(rf_sig_pairs) > 0) {
+  rf_matrix <- create_intersection_matrix(rf_pairwise_df, rf_means)
+  print(rf_matrix)
+}
 ```
 
-## R Markdown
+```{r}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+library(forcats)
+library(emmeans)   # For estimated marginal means and pairwise comparisons
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+# Filter to non-missing anxiety values and remove NAs in FirstGen
+analysis_data <- data %>%
+  filter(!is.na(Emotions_4) & !is.na(FirstGen))
+
+# Create three-way intersection variable
+analysis_data$three_way <- paste(
+  analysis_data$race_cat, 
+  analysis_data$gender_cat, 
+  analysis_data$FirstGen, 
+  sep = " × "
+)
+
+# Calculate statistics for three-way intersections
+three_way_stats <- analysis_data %>%
+  group_by(three_way, race_cat, gender_cat, FirstGen) %>%
+  summarize(
+    n = n(),
+    mean_anxiety = mean(Emotions_4, na.rm = TRUE),
+    sd_anxiety = sd(Emotions_4, na.rm = TRUE),
+    se_anxiety = sd_anxiety / sqrt(n),
+    ci_lower = mean_anxiety - 1.96 * se_anxiety,
+    ci_upper = mean_anxiety + 1.96 * se_anxiety,
+    high_anxiety_pct = mean(Emotions_4 >= 4, na.rm = TRUE) * 100,
+    .groups = "drop"
+  ) %>%
+  # Only include groups with sufficient sample size
+  filter(n >= 10) %>%
+  # Order by mean anxiety for clearer presentation
+  arrange(desc(mean_anxiety))
+
+# Identify highest and lowest anxiety groups
+cat("\nTop 5 Groups with Highest Anxiety Levels:\n")
+print(head(three_way_stats, 5))
+
+cat("\nBottom 5 Groups with Lowest Anxiety Levels:\n")
+print(tail(three_way_stats, 5))
+
+# Test for statistical significance of differences
+# Create ANOVA model
+three_way_model <- aov(Emotions_4 ~ three_way, 
+                       data = analysis_data %>% 
+                         filter(three_way %in% three_way_stats$three_way))
+anova_results <- summary(three_way_model)
+
+# Print ANOVA results
+cat("\nANOVA Results for Three-way Intersection:\n")
+print(anova_results)
+
+# Perform pairwise comparisons
+emm <- emmeans(three_way_model, specs = "three_way")
+pairwise_results <- pairs(emm, adjust = "tukey")
+pairwise_df <- as.data.frame(summary(pairwise_results))
+
+# Get significant differences
+sig_pairs <- pairwise_df %>%
+  filter(p.value < 0.05) %>%
+  arrange(p.value)
+
+# Print significant differences
+cat("\nSignificant Pairwise Differences (p < 0.05, showing first 20):\n")
+print(head(sig_pairs, 20))
+
+# Create visualization of highest and lowest anxiety groups
+# Limit to top and bottom groups for clarity 
+top_n <- 7
+bottom_n <- 7
+
+# Create labels with anxiety levels for plotting
+top_bottom_groups <- rbind(
+  head(three_way_stats, top_n) %>% mutate(group_type = "Highest Anxiety"),
+  tail(three_way_stats, bottom_n) %>% mutate(group_type = "Lowest Anxiety")
+)
+
+# Reorder intersection factor for plotting
+top_bottom_groups$three_way <- factor(
+  top_bottom_groups$three_way,
+  levels = top_bottom_groups$three_way[order(top_bottom_groups$mean_anxiety)]
+)
+
+# Create comparison plot
+p1 <- ggplot(top_bottom_groups, aes(x = three_way, y = mean_anxiety, fill = group_type)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+  geom_text(aes(label = sprintf("n=%d", n)), vjust = -0.5, size = 3) +
+  labs(
+    title = "Groups with Highest and Lowest Anxiety Levels",
+    subtitle = "Three-way Intersections of Race × Gender × First-Generation Status",
+    x = "",
+    y = "Mean Anxiety Level (Emotions_4)",
+    fill = ""
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7)) +
+  coord_flip() +
+  scale_fill_manual(values = c("Highest Anxiety" = "red", "Lowest Anxiety" = "blue"))
+
+print(p1)
+
+# Create visualization of high anxiety percentage (4-5)
+top_bottom_high <- rbind(
+  head(three_way_stats %>% arrange(desc(high_anxiety_pct)), top_n) %>% 
+    mutate(group_type = "Highest % High Anxiety"),
+  tail(three_way_stats %>% arrange(desc(high_anxiety_pct)), bottom_n) %>% 
+    mutate(group_type = "Lowest % High Anxiety")
+)
+
+# Reorder intersection factor for plotting
+top_bottom_high$three_way <- factor(
+  top_bottom_high$three_way,
+  levels = top_bottom_high$three_way[order(top_bottom_high$high_anxiety_pct)]
+)
+
+# Create comparison plot for high anxiety percentage
+p2 <- ggplot(top_bottom_high, aes(x = three_way, y = high_anxiety_pct, fill = group_type)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.1f%%", high_anxiety_pct)), 
+            position = position_stack(vjust = 0.5), size = 3, color = "white") +
+  labs(
+    title = "Percentage with High Anxiety (4-5) by Demographic Intersection",
+    subtitle = "Three-way Intersections of Race × Gender × First-Generation Status",
+    x = "",
+    y = "Percentage with High Anxiety",
+    fill = ""
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7)) +
+  coord_flip() +
+  scale_fill_manual(values = c("Highest % High Anxiety" = "darkred", 
+                             "Lowest % High Anxiety" = "darkblue"))
+
+print(p2)
+
+# Test for formal three-way interaction effect
+interaction_model <- lm(Emotions_4 ~ race_cat * gender_cat * FirstGen, data = analysis_data)
+anova_interaction <- anova(interaction_model)
+
+cat("\nFormal Test of Three-way Interaction Effect:\n")
+print(anova_interaction)
+
+# Create heatmap visualization to show patterns by gender
+# For Female students: Race × FirstGen
+female_data <- three_way_stats %>%
+  filter(gender_cat == "Female") %>%
+  mutate(label = sprintf("%.2f\n(n=%d)", mean_anxiety, n))
+
+# Create heatmap
+p3 <- ggplot(female_data, aes(x = FirstGen, y = race_cat, fill = mean_anxiety)) +
+  geom_tile() +
+  geom_text(aes(label = label), color = "white", size = 3) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(
+    title = "Mean Anxiety Levels for Female Students",
+    subtitle = "By Race and First-Generation Status",
+    x = "First-Generation Status",
+    y = "Race",
+    fill = "Mean Anxiety"
+  ) +
+  theme_minimal()
+
+print(p3)
+
+# For Male students: Race × FirstGen
+male_data <- three_way_stats %>%
+  filter(gender_cat == "Male") %>%
+  mutate(label = sprintf("%.2f\n(n=%d)", mean_anxiety, n))
+
+# Create heatmap
+p4 <- ggplot(male_data, aes(x = FirstGen, y = race_cat, fill = mean_anxiety)) +
+  geom_tile() +
+  geom_text(aes(label = label), color = "white", size = 3) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(
+    title = "Mean Anxiety Levels for Male Students",
+    subtitle = "By Race and First-Generation Status",
+    x = "First-Generation Status",
+    y = "Race",
+    fill = "Mean Anxiety"
+  ) +
+  theme_minimal() +
+  # Use same color scale as female plot for comparison
+  scale_fill_gradient(low = "blue", high = "red", 
+                     limits = range(c(female_data$mean_anxiety, male_data$mean_anxiety)))
+
+print(p4)
+
+# Create comparison plots for specific subgroups
+# Compare First Generation vs Continuing Generation across race and gender
+first_gen_effect <- three_way_stats %>%
+  group_by(race_cat, gender_cat) %>%
+  filter(n() > 1) %>%  # Only include complete comparisons
+  summarize(
+    first_gen_anxiety = mean_anxiety[FirstGen == "First Generation"],
+    cont_gen_anxiety = mean_anxiety[FirstGen == "Continuing Generation"],
+    difference = first_gen_anxiety - cont_gen_anxiety,
+    .groups = "drop"
+  ) %>%
+  filter(!is.na(difference)) %>%
+  arrange(desc(difference))
+
+# Create plot showing first-gen effect size by race and gender
+p5 <- ggplot(first_gen_effect, aes(x = interaction(race_cat, gender_cat), y = difference, fill = difference > 0)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.2f", difference)), vjust = ifelse(first_gen_effect$difference > 0, -0.5, 1.5)) +
+  labs(
+    title = "Effect of First-Generation Status on Anxiety by Race and Gender",
+    subtitle = "Positive values = First-Generation students have higher anxiety",
+    x = "Race × Gender",
+    y = "Difference in Mean Anxiety (First Gen - Continuing Gen)"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("FALSE" = "blue", "TRUE" = "red"), guide = "none")
+
+print(p5)
 ```
 
-## Including Plots
+```{r}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+library(forcats)
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Filter to non-missing anxiety values and FirstGen
+analysis_data <- data %>%
+  filter(!is.na(Emotions_4) & !is.na(FirstGen) & !is.na(race_cat) & !is.na(gender_cat))
+
+# Calculate overall mean anxiety
+overall_mean <- mean(analysis_data$Emotions_4, na.rm = TRUE)
+
+# Calculate main effects for each demographic factor
+race_effects <- analysis_data %>%
+  group_by(race_cat) %>%
+  summarize(
+    race_effect = mean(Emotions_4, na.rm = TRUE) - overall_mean,
+    .groups = "drop"
+  )
+
+gender_effects <- analysis_data %>%
+  group_by(gender_cat) %>%
+  summarize(
+    gender_effect = mean(Emotions_4, na.rm = TRUE) - overall_mean,
+    .groups = "drop"
+  )
+
+firstgen_effects <- analysis_data %>%
+  group_by(FirstGen) %>%
+  summarize(
+    firstgen_effect = mean(Emotions_4, na.rm = TRUE) - overall_mean,
+    .groups = "drop"
+  )
+
+# Calculate observed vs expected anxiety for each intersectional group
+intersection_analysis <- analysis_data %>%
+  # Create three-way intersection variable
+  mutate(three_way = paste(race_cat, gender_cat, FirstGen, sep = " × ")) %>%
+  # Group by intersection
+  group_by(three_way, race_cat, gender_cat, FirstGen) %>%
+  # Calculate observed anxiety
+  summarize(
+    n = n(),
+    observed_anxiety = mean(Emotions_4, na.rm = TRUE),
+    se_anxiety = sd(Emotions_4, na.rm = TRUE) / sqrt(n),
+    .groups = "drop"
+  ) %>%
+  # Only include groups with sufficient sample size
+  filter(n >= 10) %>%
+  # Join with main effects
+  left_join(race_effects, by = "race_cat") %>%
+  left_join(gender_effects, by = "gender_cat") %>%
+  left_join(firstgen_effects, by = "FirstGen") %>%
+  # Calculate expected anxiety
+  mutate(
+    expected_anxiety = overall_mean + race_effect + gender_effect + firstgen_effect,
+    difference = observed_anxiety - expected_anxiety,
+    pct_difference = (difference / expected_anxiety) * 100
+  ) %>%
+  # Order by difference for clearer presentation
+  arrange(desc(difference))
+
+# Print results
+cat("\nOverall Mean Anxiety:", overall_mean, "\n")
+cat("\nRace Effects:\n")
+print(race_effects)
+cat("\nGender Effects:\n")
+print(gender_effects)
+cat("\nFirst-Generation Effects:\n")
+print(firstgen_effects)
+
+cat("\nIntersectional Groups with Anxiety Higher Than Expected:\n")
+print(head(intersection_analysis %>% filter(difference > 0) %>% arrange(desc(difference)), 10))
+
+cat("\nIntersectional Groups with Anxiety Lower Than Expected:\n")
+print(head(intersection_analysis %>% filter(difference < 0) %>% arrange(difference), 10))
+
+# Create visualization of excess/deficit anxiety
+# Select groups with largest differences for visualization
+top_n <- 7
+bottom_n <- 7
+
+top_bottom_diff <- rbind(
+  head(intersection_analysis %>% arrange(desc(difference)), top_n) %>% 
+    mutate(group_type = "Higher Than Expected"),
+  head(intersection_analysis %>% arrange(difference), bottom_n) %>% 
+    mutate(group_type = "Lower Than Expected")
+)
+
+# Reorder intersection factor for plotting
+top_bottom_diff$three_way <- factor(
+  top_bottom_diff$three_way,
+  levels = top_bottom_diff$three_way[order(top_bottom_diff$difference)]
+)
+
+# Create comparison plot
+p1 <- ggplot(top_bottom_diff, aes(x = three_way, y = difference, fill = group_type)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("n=%d", n)), vjust = ifelse(top_bottom_diff$difference > 0, -0.5, 1.5), size = 3) +
+  geom_text(aes(label = sprintf("%.2f", difference)), 
+           y = ifelse(top_bottom_diff$difference > 0, top_bottom_diff$difference/2, top_bottom_diff$difference/2),
+           color = "white", size = 3) +
+  labs(
+    title = "Intersectional Effects on Anxiety Beyond Main Effects",
+    subtitle = "Difference between observed and expected anxiety levels",
+    x = "",
+    y = "Difference (Observed - Expected)",
+    fill = ""
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 8)) +
+  coord_flip() +
+  scale_fill_manual(values = c("Higher Than Expected" = "red", "Lower Than Expected" = "blue"))
+
+print(p1)
+
+# Create plot showing percentage difference
+p2 <- ggplot(top_bottom_diff, aes(x = three_way, y = pct_difference, fill = group_type)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("n=%d", n)), vjust = ifelse(top_bottom_diff$pct_difference > 0, -0.5, 1.5), size = 3) +
+  geom_text(aes(label = sprintf("%.1f%%", pct_difference)), 
+           y = ifelse(top_bottom_diff$pct_difference > 0, top_bottom_diff$pct_difference/2, top_bottom_diff$pct_difference/2),
+           color = "white", size = 3) +
+  labs(
+    title = "Percentage Difference in Anxiety Beyond Main Effects",
+    subtitle = "Percent deviation from expected anxiety levels",
+    x = "",
+    y = "Percentage Difference",
+    fill = ""
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 8)) +
+  coord_flip() +
+  scale_fill_manual(values = c("Higher Than Expected" = "red", "Lower Than Expected" = "blue"))
+
+print(p2)
+
+# Calculate significance of interaction effects
+# Fit model with main effects only
+main_effects_model <- lm(Emotions_4 ~ race_cat + gender_cat + FirstGen, data = analysis_data)
+
+# Fit model with all interactions
+interaction_model <- lm(Emotions_4 ~ race_cat * gender_cat * FirstGen, data = analysis_data)
+
+# Compare models
+anova_comparison <- anova(main_effects_model, interaction_model)
+cat("\nTest of Significance for Interaction Effects:\n")
+print(anova_comparison)
+
+# Create a plot showing observed vs expected anxiety
+intersection_analysis$three_way <- factor(
+  intersection_analysis$three_way,
+  levels = intersection_analysis$three_way[order(intersection_analysis$observed_anxiety)]
+)
+
+p3 <- ggplot(intersection_analysis, aes(x = three_way)) +
+  geom_point(aes(y = observed_anxiety), color = "red", size = 3) +
+  geom_point(aes(y = expected_anxiety), color = "blue", size = 3) +
+  geom_segment(aes(y = expected_anxiety, yend = observed_anxiety, xend = three_way),
+              color = "grey50", size = 0.5) +
+  labs(
+    title = "Observed vs. Expected Anxiety by Intersectional Group",
+    subtitle = "Red = Observed, Blue = Expected based on main effects only",
+    x = "",
+    y = "Anxiety Level"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7))
+
+print(p3)
+```
+```{r}
+# First, fit the full model with three-way interaction
+full_model <- lm(Emotions_4 ~ race_cat * gender_cat * FirstGen, data = analysis_data)
+
+# Now fit a model with only two-way interactions
+two_way_model <- lm(Emotions_4 ~ race_cat + gender_cat + FirstGen + 
+                     race_cat:gender_cat, 
+                    data = analysis_data)
+
+# Compare the models to test if the three-way interaction is significant
+anova_comparison <- anova(two_way_model, full_model)
+print("Model Comparison - Testing significance of three-way interaction:")
+print(anova_comparison)
+
+# Look at summary of two-way interaction model to see coefficients
+summary_two_way <- summary(two_way_model)
+print("Summary of Two-way Interaction Model:")
+print(summary_two_way)
+
+# Extract ANOVA table to see significance of each term
+anova_two_way <- anova(two_way_model)
+print("ANOVA Table for Two-way Model:")
+print(anova_two_way)
+
+# Calculate effect sizes for the two-way model
+SS_total <- sum(anova_two_way$`Sum Sq`)
+effect_sizes <- data.frame(
+  Term = rownames(anova_two_way),
+  DF = anova_two_way$Df,
+  SumSq = anova_two_way$`Sum Sq`,
+  F_value = anova_two_way$`F value`,
+  P_value = anova_two_way$`Pr(>F)`,
+  Eta_squared = anova_two_way$`Sum Sq` / SS_total
+)
+print("Effect Sizes for Two-way Model Terms:")
+print(effect_sizes)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
